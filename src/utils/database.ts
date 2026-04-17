@@ -1,6 +1,3 @@
-// Database utilities using localStorage for offline storage
-// Simulates SQLite functionality in browser environment
-
 import { User, Product, Transaction, UserRole } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 

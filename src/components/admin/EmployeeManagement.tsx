@@ -1,247 +1,363 @@
-// Employee Management Component
+import React, { useState, useEffect, useCallback } from 'react';
+import { UserPlus, Edit2, Trash2 } from 'lucide-react';
+import { User, UserRole } from '@/types';
+import { getUsers, saveUser, deleteUser } from '@/api/api.ts';
+import Modal from '../common/Modal';
+import { ErrorBanner, SuccessBanner } from '../common/Banner';
+import Button from '../common/Button';
+import DataTable, { Column } from '../common/DataTable';
 
-import React, { useState, useEffect } from 'react';
-import { User, UserRole } from '../../types';
-import { getUsers, saveUser, deleteUser } from '../../utils/database';
-import { v4 as uuidv4 } from 'uuid';
-import { UserPlus, Edit2, Trash2, X, Check, AlertCircle } from 'lucide-react';
+// ─── Employee Form Modal ──────────────────────────────────────────────────────
+
+interface FormData {
+  username: string;
+  password: string;
+  role: UserRole;
+}
+
+const defaultForm: FormData = { username: '', password: '', role: 'wholesale' };
+
+interface EmployeeFormProps {
+  open: boolean;
+  editing: User | null;
+  loading: boolean;
+  error: string;
+  onClose: () => void;
+  onSubmit: (data: FormData) => void;
+}
+
+const EmployeeForm: React.FC<EmployeeFormProps> = ({
+                                                     open,
+                                                     editing,
+                                                     loading,
+                                                     error,
+                                                     onClose,
+                                                     onSubmit,
+                                                   }) => {
+  const [form, setForm] = useState<FormData>(defaultForm);
+
+  // Sync form when editing changes
+  useEffect(() => {
+    if (editing) {
+      setForm({ username: editing.username, password: '', role: editing.role });
+    } else {
+      setForm(defaultForm);
+    }
+  }, [editing, open]);
+
+  const set = (key: keyof FormData) => (
+      e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) => setForm((f) => ({ ...f, [key]: e.target.value }));
+
+  const inputClass =
+      'w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-orange-500 transition-colors disabled:opacity-50';
+
+  return (
+      <Modal
+          open={open}
+          onClose={onClose}
+          title={editing ? 'Edit Employee' : 'Add New Employee'}
+          persistent={loading}
+      >
+        <div className="space-y-4">
+          {error && <ErrorBanner message={error} />}
+
+          <div>
+            <label className="block text-gray-300 text-sm font-medium mb-2">Username</label>
+            <input
+                type="text"
+                value={form.username}
+                onChange={set('username')}
+                disabled={loading}
+                placeholder="Enter username"
+                className={inputClass}
+            />
+          </div>
+
+          <div>
+            <label className="block text-gray-300 text-sm font-medium mb-2">
+              Password {editing && <span className="text-gray-500 font-normal">(leave blank to keep current)</span>}
+            </label>
+            <input
+                type="password"
+                value={form.password}
+                onChange={set('password')}
+                disabled={loading}
+                placeholder={editing ? 'Enter new password' : 'Enter password'}
+                className={inputClass}
+            />
+          </div>
+
+          <div>
+            <label className="block text-gray-300 text-sm font-medium mb-2">Role</label>
+            <select
+                value={form.role}
+                onChange={set('role')}
+                disabled={loading}
+                className={inputClass}
+            >
+              <option value="wholesale">Wholesale</option>
+              <option value="retail">Retail</option>
+            </select>
+          </div>
+
+          <div className="flex gap-3 pt-2">
+            <Button variant="secondary" size="lg" fullWidth onClick={onClose} disabled={loading}>
+              Cancel
+            </Button>
+            <Button
+                variant="primary"
+                color="orange"
+                size="lg"
+                fullWidth
+                loading={loading}
+                onClick={() => onSubmit(form)}
+            >
+              {editing ? 'Update Employee' : 'Add Employee'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+  );
+};
+
+// ─── Delete Confirm Modal ─────────────────────────────────────────────────────
+
+interface DeleteConfirmProps {
+  open: boolean;
+  username: string;
+  loading: boolean;
+  onConfirm: () => void;
+  onCancel: () => void;
+}
+
+const DeleteConfirm: React.FC<DeleteConfirmProps> = ({
+                                                       open, username, loading, onConfirm, onCancel,
+                                                     }) => (
+    <Modal open={open} title="Delete Employee" persistent={loading}>
+      <div className="space-y-4">
+        <p className="text-gray-300 text-sm">
+          Are you sure you want to delete{' '}
+          <span className="text-white font-semibold">{username}</span>?
+          This cannot be undone.
+        </p>
+        <div className="flex gap-3">
+          <Button variant="secondary" size="lg" fullWidth onClick={onCancel} disabled={loading}>
+            Cancel
+          </Button>
+          <Button variant="danger" size="lg" fullWidth loading={loading} onClick={onConfirm}>
+            Delete
+          </Button>
+        </div>
+      </div>
+    </Modal>
+);
+
+// ─── Main Component ───────────────────────────────────────────────────────────
 
 const EmployeeManagement: React.FC = () => {
-  const [employees, setEmployees] = useState<User[]>([]);
-  const [showForm, setShowForm] = useState(false);
-  const [editingUser, setEditingUser] = useState<User | null>(null);
-  const [formData, setFormData] = useState({
-    username: '',
-    password: '',
-    role: 'wholesale' as UserRole,
-  });
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+  const [employees,    setEmployees]    = useState<User[]>([]);
+  const [loading,      setLoading]      = useState(true);
+  const [formOpen,     setFormOpen]     = useState(false);
+  const [formLoading,  setFormLoading]  = useState(false);
+  const [formError,    setFormError]    = useState('');
+  const [editingUser,  setEditingUser]  = useState<User | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<User | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [success,      setSuccess]      = useState('');
 
-  useEffect(() => {
-    loadEmployees();
-  }, []);
-
-  const loadEmployees = () => {
-    const users = getUsers().filter(u => u.role !== 'admin');
-    setEmployees(users);
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setSuccess('');
-
-    if (!formData.username || !formData.password) {
-      setError('Please fill in all fields');
-      return;
-    }
-
-    // Check for duplicate username
-    const existingUsers = getUsers();
-    const duplicate = existingUsers.find(
-      u => u.username === formData.username && u.id !== editingUser?.id
-    );
-    if (duplicate) {
-      setError('Username already exists');
-      return;
-    }
-
-    const user: User = {
-      id: editingUser?.id || uuidv4(),
-      username: formData.username,
-      password: formData.password,
-      role: formData.role,
-      createdAt: editingUser?.createdAt || new Date().toISOString(),
-    };
-
-    saveUser(user);
-    loadEmployees();
-    resetForm();
-    setSuccess(editingUser ? 'Employee updated successfully' : 'Employee added successfully');
+  const flash = (msg: string) => {
+    setSuccess(msg);
     setTimeout(() => setSuccess(''), 3000);
   };
 
-  const handleEdit = (user: User) => {
-    setEditingUser(user);
-    setFormData({
-      username: user.username,
-      password: user.password,
-      role: user.role,
-    });
-    setShowForm(true);
-  };
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const all = await getUsers();
+      setEmployees(all.filter((u) => u.role !== 'admin'));
+    } catch {
+      // leave empty
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-  const handleDelete = (userId: string) => {
-    if (confirm('Are you sure you want to delete this employee?')) {
-      deleteUser(userId);
-      loadEmployees();
-      setSuccess('Employee deleted successfully');
-      setTimeout(() => setSuccess(''), 3000);
+  useEffect(() => { load(); }, [load]);
+
+  // ── Form submit ─────────────────────────────────────────────────────────────
+  const handleSubmit = async (form: FormData) => {
+    setFormError('');
+
+    if (!form.username.trim()) {
+      setFormError('Username is required.');
+      return;
+    }
+    if (!editingUser && !form.password) {
+      setFormError('Password is required for new employees.');
+      return;
+    }
+
+    setFormLoading(true);
+    try {
+      const payload: Record<string, unknown> = {
+        username: form.username.trim(),
+        role:     form.role,
+      };
+      // Only send password if provided (for edits, blank = keep current)
+      if (form.password) payload.password = form.password;
+
+      if (editingUser) {
+        await saveUser({ id: editingUser.id, ...payload });
+        flash('Employee updated successfully.');
+      } else {
+        await saveUser(payload as Parameters<typeof saveUser>[0]);
+        flash('Employee added successfully.');
+      }
+
+      setFormOpen(false);
+      setEditingUser(null);
+      await load();
+    } catch (err: unknown) {
+      setFormError(err instanceof Error ? err.message : 'Failed to save employee.');
+    } finally {
+      setFormLoading(false);
     }
   };
 
-  const resetForm = () => {
-    setFormData({ username: '', password: '', role: 'wholesale' });
-    setEditingUser(null);
-    setShowForm(false);
-    setError('');
+  // ── Delete ──────────────────────────────────────────────────────────────────
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleteLoading(true);
+    try {
+      await deleteUser(deleteTarget.id);
+      flash('Employee deleted successfully.');
+      setDeleteTarget(null);
+      await load();
+    } catch (err: unknown) {
+      setSuccess('');
+      flash(err instanceof Error ? err.message : 'Failed to delete employee.');
+    } finally {
+      setDeleteLoading(false);
+    }
   };
 
-  return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <h3 className="text-xl font-bold text-white">Employee Management</h3>
-        <button
-          onClick={() => setShowForm(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-500 transition-colors"
-        >
-          <UserPlus className="w-5 h-5" />
-          Add Employee
-        </button>
-      </div>
+  const openEdit = (user: User) => {
+    setEditingUser(user);
+    setFormError('');
+    setFormOpen(true);
+  };
 
-      {/* Success Message */}
-      {success && (
-        <div className="flex items-center gap-2 p-3 bg-green-500/10 border border-green-500/30 rounded-lg text-green-400">
-          <Check className="w-5 h-5" />
-          {success}
-        </div>
-      )}
+  const openAdd = () => {
+    setEditingUser(null);
+    setFormError('');
+    setFormOpen(true);
+  };
 
-      {/* Add/Edit Form Modal */}
-      {showForm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-gray-800 rounded-xl p-6 w-full max-w-md border border-gray-700">
-            <div className="flex justify-between items-center mb-6">
-              <h4 className="text-lg font-bold text-white">
-                {editingUser ? 'Edit Employee' : 'Add New Employee'}
-              </h4>
-              <button onClick={resetForm} className="text-gray-400 hover:text-white">
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {error && (
-                <div className="flex items-center gap-2 p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400">
-                  <AlertCircle className="w-5 h-5" />
-                  {error}
-                </div>
-              )}
-
-              <div>
-                <label className="block text-gray-300 text-sm font-medium mb-2">Username</label>
-                <input
-                  type="text"
-                  value={formData.username}
-                  onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                  className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-orange-500"
-                  placeholder="Enter username"
-                />
-              </div>
-
-              <div>
-                <label className="block text-gray-300 text-sm font-medium mb-2">Password</label>
-                <input
-                  type="password"
-                  value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-orange-500"
-                  placeholder="Enter password"
-                />
-              </div>
-
-              <div>
-                <label className="block text-gray-300 text-sm font-medium mb-2">Role</label>
-                <select
-                  value={formData.role}
-                  onChange={(e) => setFormData({ ...formData, role: e.target.value as UserRole })}
-                  className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-orange-500"
-                >
-                  <option value="wholesale">Wholesale</option>
-                  <option value="retail">Retail</option>
-                </select>
-              </div>
-
-              <div className="flex gap-3 mt-6">
-                <button
-                  type="button"
-                  onClick={resetForm}
-                  className="flex-1 py-3 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-500 transition-colors"
-                >
-                  {editingUser ? 'Update' : 'Add Employee'}
-                </button>
-              </div>
-            </form>
+  // ── Table columns ───────────────────────────────────────────────────────────
+  const columns: Column<User>[] = [
+    {
+      key: 'username',
+      header: 'Username',
+      render: (u) => <span className="text-white font-medium">{u.username}</span>,
+    },
+    {
+      key: 'role',
+      header: 'Role',
+      render: (u) => (
+          <span
+              className={`px-3 py-1 rounded-full text-xs font-semibold capitalize ${
+                  u.role === 'wholesale'
+                      ? 'bg-blue-500/20 text-blue-400'
+                      : 'bg-green-500/20 text-green-400'
+              }`}
+          >
+          {u.role}
+        </span>
+      ),
+    },
+    {
+      key: 'createdAt',
+      header: 'Created',
+      render: (u) => (
+          <span className="text-gray-400 text-sm">
+          {new Date(u.createdAt).toLocaleDateString()}
+        </span>
+      ),
+    },
+    {
+      key: 'actions',
+      header: 'Actions',
+      align: 'right',
+      render: (u) => (
+          <div className="flex justify-end gap-2">
+            <button
+                onClick={() => openEdit(u)}
+                className="p-2 bg-blue-500/20 text-blue-400 rounded-lg hover:bg-blue-500/30 transition-colors"
+                title="Edit"
+            >
+              <Edit2 className="w-4 h-4" />
+            </button>
+            <button
+                onClick={() => setDeleteTarget(u)}
+                className="p-2 bg-red-500/20 text-red-400 rounded-lg hover:bg-red-500/30 transition-colors"
+                title="Delete"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
           </div>
-        </div>
-      )}
+      ),
+    },
+  ];
 
-      {/* Employees Table */}
-      <div className="bg-gray-800/50 rounded-xl border border-gray-700 overflow-hidden">
-        <table className="w-full">
-          <thead className="bg-gray-700/50">
-            <tr>
-              <th className="text-left text-gray-300 font-medium p-4">Username</th>
-              <th className="text-left text-gray-300 font-medium p-4">Role</th>
-              <th className="text-left text-gray-300 font-medium p-4">Created</th>
-              <th className="text-right text-gray-300 font-medium p-4">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {employees.length === 0 ? (
-              <tr>
-                <td colSpan={4} className="text-center text-gray-400 p-8">
-                  No employees found. Click "Add Employee" to create one.
-                </td>
-              </tr>
-            ) : (
-              employees.map((employee) => (
-                <tr key={employee.id} className="border-t border-gray-700 hover:bg-gray-700/30">
-                  <td className="p-4 text-white">{employee.username}</td>
-                  <td className="p-4">
-                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                      employee.role === 'wholesale' 
-                        ? 'bg-blue-500/20 text-blue-400' 
-                        : 'bg-green-500/20 text-green-400'
-                    }`}>
-                      {employee.role}
-                    </span>
-                  </td>
-                  <td className="p-4 text-gray-400">
-                    {new Date(employee.createdAt).toLocaleDateString()}
-                  </td>
-                  <td className="p-4">
-                    <div className="flex justify-end gap-2">
-                      <button
-                        onClick={() => handleEdit(employee)}
-                        className="p-2 bg-blue-500/20 text-blue-400 rounded-lg hover:bg-blue-500/30 transition-colors"
-                      >
-                        <Edit2 className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(employee.id)}
-                        className="p-2 bg-red-500/20 text-red-400 rounded-lg hover:bg-red-500/30 transition-colors"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+  return (
+      <div className="space-y-6">
+        {/* Page header */}
+        <div className="flex justify-between items-center">
+          <h3 className="text-xl font-bold text-white">Employee Management</h3>
+          <Button
+              variant="primary"
+              color="orange"
+              icon={<UserPlus className="w-5 h-5" />}
+              onClick={openAdd}
+          >
+            Add Employee
+          </Button>
+        </div>
+
+        {/* Success banner */}
+        {success && <SuccessBanner message={success} onDismiss={() => setSuccess('')} />}
+
+        {/* Table */}
+        <div className="bg-gray-800/50 rounded-xl border border-gray-700 overflow-hidden">
+          <DataTable
+              columns={columns}
+              data={employees}
+              keyExtractor={(u) => u.id}
+              loading={loading}
+              emptyMessage='No employees found. Click "Add Employee" to create one.'
+          />
+        </div>
+
+        {/* Add / Edit modal */}
+        <EmployeeForm
+            open={formOpen}
+            editing={editingUser}
+            loading={formLoading}
+            error={formError}
+            onClose={() => { setFormOpen(false); setEditingUser(null); }}
+            onSubmit={handleSubmit}
+        />
+
+        {/* Delete confirm modal */}
+        <DeleteConfirm
+            open={!!deleteTarget}
+            username={deleteTarget?.username ?? ''}
+            loading={deleteLoading}
+            onConfirm={handleDelete}
+            onCancel={() => setDeleteTarget(null)}
+        />
       </div>
-    </div>
   );
 };
 
