@@ -226,5 +226,5 @@ export const exportDatabase = async (): Promise<string> => {
 /**
  * importDatabase() — NOT implemented as an API endpoint.
  * Restoring data should be done directly on the server via psql.
- * If you need a UI import, ask and I can add an admin import endpoint.
+ * If you need a UI import, ask and I can add an admin-layouts import endpoint.
  */

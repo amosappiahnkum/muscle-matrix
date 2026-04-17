@@ -1,7 +1,7 @@
 import React from 'react';
 import { AlertCircle } from 'lucide-react';
-import Modal from '../common/Modal.tsx';
-import Button from '../common/Button.tsx';
+import Modal from '../../components/common/Modal.tsx';
+import Button from '../../components/common/Button.tsx';
 import { SaleItem } from '@/types';
 
 interface ConfirmSaleModalProps {

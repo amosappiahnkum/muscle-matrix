@@ -1,7 +1,7 @@
 import React from 'react';
 import { format } from 'date-fns';
 import { Check } from 'lucide-react';
-import Button from '../common/Button.tsx';
+import Button from '../../components/common/Button.tsx';
 
 interface CheckoutPanelProps {
   type: 'wholesale' | 'retail';

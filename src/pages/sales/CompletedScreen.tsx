@@ -2,7 +2,7 @@ import React from 'react';
 import { Check, Printer } from 'lucide-react';
 import { Transaction } from '@/types';
 import { printReceipt } from './ReceiptPrinter.ts';
-import Button from '../common/Button.tsx';
+import Button from '../../components/common/Button.tsx';
 
 interface CompletedScreenProps {
   transaction: Transaction;

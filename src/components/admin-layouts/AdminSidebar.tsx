@@ -1,4 +1,4 @@
-// src/components/admin/AdminSidebar.tsx
+// src/components/admin-layouts/AdminSidebar.tsx
 import React from 'react';
 import {
     Dumbbell,
@@ -11,7 +11,7 @@ import {
     Download,
     KeyRound,
 } from 'lucide-react';
-import { TabType } from './AdminDashboard';
+import { TabType } from '../../pages/admin/AdminDashboard.tsx';
 import { User } from '../../types';
 
 interface AdminSidebarProps {

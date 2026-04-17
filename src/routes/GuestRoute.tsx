@@ -8,7 +8,7 @@ interface GuestRouteProps {
 }
 
 const roleToPortal: Record<string, string> = {
-  admin:     '/admin',
+  admin:     '/admin-layouts',
   wholesale: '/wholesale',
   retail:    '/retail',
 };

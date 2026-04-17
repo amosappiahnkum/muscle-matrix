@@ -1,7 +1,7 @@
 import React from 'react';
 import { Zap } from 'lucide-react';
 import { format } from 'date-fns';
-import { TabType } from './AdminDashboard';
+import { TabType } from '../../pages/admin/AdminDashboard.tsx';
 
 interface AdminHeaderProps {
     activeTab: TabType;

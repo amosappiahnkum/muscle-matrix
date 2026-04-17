@@ -7,7 +7,7 @@ const DB_KEYS = {
   TRANSACTIONS: 'muscle_matrix_transactions',
 };
 
-// Initialize default admin if not exists
+// Initialize default admin-layouts if not exists
 export const initializeDatabase = () => {
   const users = getUsers();
   if (!users.find(u => u.role === 'admin')) {

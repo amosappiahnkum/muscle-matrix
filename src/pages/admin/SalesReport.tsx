@@ -6,9 +6,9 @@ import {
   Calendar, DollarSign, ShoppingCart, Store,
   ShoppingBag, Printer, FileDown, TrendingUp, Receipt, Filter,
 } from 'lucide-react';
-import Button from '../common/Button';
-import DataTable, { Column } from '../common/DataTable';
-import { ErrorBanner } from '../common/Banner';
+import Button from '../../components/common/Button.tsx';
+import DataTable, { Column } from '../../components/common/DataTable.tsx';
+import { ErrorBanner } from '../../components/common/Banner.tsx';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const BUSINESS_NAME  = 'MUSCLE MATRIX';

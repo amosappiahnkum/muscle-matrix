@@ -1,14 +1,14 @@
-// src/components/admin/TransactionHistory.tsx
+// src/components/admin-layouts/TransactionHistory.tsx
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { format, parseISO } from 'date-fns';
 import { Eye, Printer, FileText } from 'lucide-react';
 import { Transaction } from '@/types';
 import { getTransactions } from '@/api/api.ts';
-import { printReceipt } from '../sales/ReceiptPrinter';
-import DataTable, { Column } from '../common/DataTable';
-import { ErrorBanner } from '../common/Banner';
-import TransactionDetailModal from './transactions/TransactionDetailModal';
-import TransactionFilters from './transactions/TransactionFilters';
+import { printReceipt } from '@/pages/sales/ReceiptPrinter.ts';
+import DataTable, { Column } from '../../components/common/DataTable.tsx';
+import { ErrorBanner } from '../../components/common/Banner.tsx';
+import TransactionDetailModal from '@/pages/admin/transactions/TransactionDetailModal.tsx';
+import TransactionFilters from '@/pages/admin/transactions/TransactionFilters.tsx';
 
 type SaleType = 'all' | 'wholesale' | 'retail';
 

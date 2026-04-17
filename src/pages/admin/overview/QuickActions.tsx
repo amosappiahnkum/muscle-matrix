@@ -1,6 +1,6 @@
 import React from 'react';
 import { Users, Package, BarChart3, Download, KeyRound } from 'lucide-react';
-import { TabType } from '../AdminDashboard';
+import { TabType } from '../AdminDashboard.tsx';
 
 interface QuickActionsProps {
     onNavigate: (tab: TabType) => void;

@@ -2,9 +2,9 @@ import React from 'react';
 import { format, parseISO } from 'date-fns';
 import { Printer } from 'lucide-react';
 import { Transaction } from '@/types';
-import Modal from '../../common/Modal';
-import Button from '../../common/Button';
-import { printReceipt } from '../../sales/ReceiptPrinter';
+import Modal from '../../../components/common/Modal.tsx';
+import Button from '../../../components/common/Button.tsx';
+import { printReceipt } from '@/pages/sales/ReceiptPrinter.ts';
 
 interface TransactionDetailModalProps {
     transaction: Transaction | null;

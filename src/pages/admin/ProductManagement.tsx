@@ -1,12 +1,12 @@
-// src/components/admin/ProductManagement.tsx
+// src/components/admin-layouts/ProductManagement.tsx
 import React, { useState, useEffect, useCallback } from 'react';
 import { Plus, Edit2, Trash2, Search, Package } from 'lucide-react';
 import { Product } from '../../types';
-import { getProducts, saveProduct, deleteProduct } from '../../api/api';
-import Modal from '../common/Modal';
-import { ErrorBanner, SuccessBanner } from '../common/Banner';
-import Button from '../common/Button';
-import DataTable, { Column } from '../common/DataTable';
+import { getProducts, saveProduct, deleteProduct } from '../../api/api.ts';
+import Modal from '../../components/common/Modal.tsx';
+import { ErrorBanner, SuccessBanner } from '../../components/common/Banner.tsx';
+import Button from '../../components/common/Button.tsx';
+import DataTable, { Column } from '../../components/common/DataTable.tsx';
 
 // ─── Product Form Modal ───────────────────────────────────────────────────────
 

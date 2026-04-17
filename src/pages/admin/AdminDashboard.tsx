@@ -1,16 +1,16 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../../context/AuthContext.tsx';
 
-import AdminSidebar        from './AdminSidebar';
-import AdminHeader         from './AdminHeader';
-import OverviewTab         from './overview/OverviewTab';
-import EmployeeManagement  from './EmployeeManagement';
-import ProductManagement   from './ProductManagement';
-import SalesReport         from './SalesReport';
-import TransactionHistory  from './TransactionHistory';
-import BackupRestore       from './BackupRestore';
-import ChangeAdminCredentials from './ChangeAdminCredentials';
+import AdminSidebar        from '@/components/admin-layouts/AdminSidebar.tsx';
+import AdminHeader         from '@/components/admin-layouts/AdminHeader.tsx';
+import OverviewTab         from '@/pages/admin/overview/OverviewTab.tsx';
+import EmployeeManagement  from './EmployeeManagement.tsx';
+import ProductManagement   from './ProductManagement.tsx';
+import SalesReport         from './SalesReport.tsx';
+import TransactionHistory  from './TransactionHistory.tsx';
+import BackupRestore       from './BackupRestore.tsx';
+import ChangeAdminCredentials from './ChangeAdminCredentials.tsx';
 
 // Exported so sibling components (QuickActions, AdminSidebar) can import it
 export type TabType =

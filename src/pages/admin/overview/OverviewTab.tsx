@@ -2,10 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { getProducts, getLowStockProducts, getDailySalesReport } from '@/api/api.ts';
 import { Product } from '@/types';
-import StatsCards from './StatsCards';
-import LowStockAlert from './LowStockAlert';
-import QuickActions from './QuickActions';
-import { TabType } from '../AdminDashboard';
+import StatsCards from './StatsCards.tsx';
+import LowStockAlert from './LowStockAlert.tsx';
+import QuickActions from './QuickActions.tsx';
+import { TabType } from '../AdminDashboard.tsx';
 
 interface OverviewTabProps {
     onNavigate: (tab: TabType) => void;

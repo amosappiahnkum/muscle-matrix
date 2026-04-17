@@ -1,6 +1,6 @@
 import React from 'react';
 import { Dumbbell, LogOut, ShoppingCart, User } from 'lucide-react';
-import Button from '../common/Button.tsx';
+import Button from '../../components/common/Button.tsx';
 
 interface WelcomeScreenProps {
   type: 'wholesale' | 'retail';

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Search, Plus } from 'lucide-react';
 import { Product } from '@/types';
 import { searchProducts } from '@/api/api.ts';
-import Button from '../common/Button.tsx';
+import Button from '../../components/common/Button.tsx';
 
 interface ProductSearchProps {
   type: 'wholesale' | 'retail';

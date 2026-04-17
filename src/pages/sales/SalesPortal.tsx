@@ -4,17 +4,17 @@ import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { Dumbbell, X } from 'lucide-react';
 
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../../context/AuthContext.tsx';
 import { Product, SaleItem, Transaction, TransactionPayload } from '@/types';
 import { saveTransaction, getProductById } from '@/api/api.ts';
 
-import WelcomeScreen    from './WelcomeScreen';
-import CompletedScreen  from './CompletedScreen';
-import ProductSearch    from './ProductSearch';
-import CartPanel        from './CartPanel';
-import CheckoutPanel    from './CheckoutPanel';
-import ConfirmSaleModal from './ConfirmSaleModal';
-import { ErrorBanner }  from '../common/Banner';
+import WelcomeScreen    from './WelcomeScreen.tsx';
+import CompletedScreen  from './CompletedScreen.tsx';
+import ProductSearch    from './ProductSearch.tsx';
+import CartPanel        from './CartPanel.tsx';
+import CheckoutPanel    from './CheckoutPanel.tsx';
+import ConfirmSaleModal from './ConfirmSaleModal.tsx';
+import { ErrorBanner }  from '../../components/common/Banner.tsx';
 
 interface SalesPortalProps {
   type: 'wholesale' | 'retail';

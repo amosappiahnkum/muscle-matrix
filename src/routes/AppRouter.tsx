@@ -5,10 +5,10 @@ import { AuthProvider } from '../context/AuthContext';
 import ProtectedRoute from './ProtectedRoute';
 import GuestRoute from './GuestRoute';
 import SessionWarning from '../components/common/SessionWarning';
-import Home from '../components/Home';
-import Login from '../components/Login';
-import AdminDashboard from '../components/admin/AdminDashboard';
-import SalesPortal from '../components/sales/SalesPortal';
+import Home from '../pages/Home.tsx';
+import Login from '../pages/auth/Login.tsx';
+import AdminDashboard from '../pages/admin/AdminDashboard.tsx';
+import SalesPortal from '@/pages/sales/SalesPortal';
 
 const AppRouter: React.FC = () => (
     <BrowserRouter>

@@ -1,13 +1,13 @@
-// src/components/admin/ChangeAdminCredentials.tsx
+// src/components/admin-layouts/ChangeAdminCredentials.tsx
 import React, { useState } from 'react';
-import { useAuth } from '../../context/AuthContext';
-import { saveUser, resetUserPassword } from '../../api/api';
+import { useAuth } from '../../context/AuthContext.tsx';
+import { saveUser, resetUserPassword } from '../../api/api.ts';
 import {
     KeyRound, User, Lock, Eye, EyeOff,
     ShieldCheck, Mail, Phone, AlertCircle,
 } from 'lucide-react';
-import Button from '../common/Button';
-import { ErrorBanner, SuccessBanner } from '../common/Banner';
+import Button from '../../components/common/Button.tsx';
+import { ErrorBanner, SuccessBanner } from '../../components/common/Banner.tsx';
 
 // ─── Password strength meter ──────────────────────────────────────────────────
 const getStrength = (pwd: string) => {
@@ -119,7 +119,7 @@ const ChangeAdminCredentials: React.FC = () => {
         setLoading(true);
         try {
             // Verify current password via login endpoint
-            const { authenticateUser } = await import('../../api/api');
+            const { authenticateUser } = await import('../../api/api.ts');
             const verified = await authenticateUser(user.username, currentPassword);
             if (!verified) {
                 setError('Current password is incorrect.');

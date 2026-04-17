@@ -1,7 +1,7 @@
 // Backup & Restore Component
 
 import React, { useState, useRef } from 'react';
-import { exportDatabase, importDatabase } from '../../utils/database';
+import { exportDatabase, importDatabase } from '../../utils/database.ts';
 import { Download, Upload, AlertCircle, Check, FileText, Database } from 'lucide-react';
 import { format } from 'date-fns';
 

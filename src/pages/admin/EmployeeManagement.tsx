@@ -2,10 +2,10 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { UserPlus, Edit2, Trash2 } from 'lucide-react';
 import { User, UserRole } from '@/types';
 import { getUsers, saveUser, deleteUser } from '@/api/api.ts';
-import Modal from '../common/Modal';
-import { ErrorBanner, SuccessBanner } from '../common/Banner';
-import Button from '../common/Button';
-import DataTable, { Column } from '../common/DataTable';
+import Modal from '../../components/common/Modal.tsx';
+import { ErrorBanner, SuccessBanner } from '../../components/common/Banner.tsx';
+import Button from '../../components/common/Button.tsx';
+import DataTable, { Column } from '../../components/common/DataTable.tsx';
 
 // ─── Employee Form Modal ──────────────────────────────────────────────────────
 

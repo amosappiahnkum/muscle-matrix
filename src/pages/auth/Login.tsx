@@ -1,12 +1,12 @@
 // src/components/Login.tsx
 // Single login component — reads the role from the URL param (:role)
-// /login/admin      → Admin Login
+// /login/admin-layouts      → Admin Login
 // /login/wholesale  → Wholesale Portal Login
 // /login/retail     → Retail Portal Login
 // Any unknown role  → redirects to /
 import React, { useState } from 'react';
 import { useNavigate, useParams, Navigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../../context/AuthContext.tsx';
 import { UserRole } from '@/types';
 import { Lock, User, AlertCircle, Dumbbell, Eye, EyeOff } from 'lucide-react';
 
@@ -24,7 +24,7 @@ const portalConfig: Record<PortalRole, {
     subtitle:    'Management Portal',
     gradient:    'from-purple-600 to-purple-800',
     focusColor:  'focus:border-purple-500 focus:ring-purple-500',
-    successPath: '/admin',
+    successPath: '/admin-layouts',
   },
   wholesale: {
     title:       'Wholesale Portal',
@@ -62,7 +62,7 @@ const Login: React.FC = () => {
   const config     = portalConfig[portalRole];
 
   // The expected role to validate against.
-  // Admin login has no expectedRole restriction — any admin can log in there.
+  // Admin login has no expectedRole restriction — any admin-layouts can log in there.
   const expectedRole: UserRole | undefined =
       portalRole !== 'admin' ? portalRole : undefined;
 
