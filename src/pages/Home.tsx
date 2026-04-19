@@ -5,7 +5,6 @@ import {
   Shield, UserCog, ChevronRight, AlertTriangle, Zap,
 } from 'lucide-react';
 
-// ─── Portal config — add/remove portals here only ────────────────────────────
 const PORTALS = [
   {
     role:      'admin',

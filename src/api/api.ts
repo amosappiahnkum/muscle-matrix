@@ -1,94 +1,115 @@
-
 import {
-  User,
-  Product,
-  Transaction,
-  DailySalesReport,
-  UserRole,
-} from '@/types';
+  User, Product, Transaction,
+  DailySalesReport, UserRole, LoginResponse,
+} from '../types';
 
-// ─── Config ──────────────────────────────────────────────────────────────────
-const BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000/api';
+// ─── Config ───────────────────────────────────────────────────────────────────
+const BASE_URL    = import.meta.env.VITE_API_URL ?? 'http://localhost:8000/api';
+const COOKIE_NAME = 'mm_token';
+const COOKIE_DAYS = 1;
 
-// Token is stored in memory + localStorage
-let _token: string | null = localStorage.getItem('mm_token');
+// ─── Cookie helpers ───────────────────────────────────────────────────────────
+const setCookie = (name: string, value: string, days: number): void => {
+  const expires = new Date(Date.now() + days * 864e5).toUTCString();
+  document.cookie = [
+    `${name}=${encodeURIComponent(value)}`,
+    `expires=${expires}`,
+    'path=/',
+    'SameSite=Strict',
+    ...(window.location.protocol === 'https:' ? ['Secure'] : []),
+  ].join('; ');
+};
+
+const getCookie = (name: string): string | null => {
+  const match = document.cookie
+    .split('; ')
+    .find((row) => row.startsWith(`${name}=`));
+  return match ? decodeURIComponent(match.split('=')[1]) : null;
+};
+
+const deleteCookie = (name: string): void => {
+  document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; SameSite=Strict`;
+};
+
+// ─── Token management ─────────────────────────────────────────────────────────
+let _token: string | null = getCookie(COOKIE_NAME);
 
 export const getToken = (): string | null => _token;
 
 export const setToken = (token: string | null): void => {
   _token = token;
   if (token) {
-    localStorage.setItem('mm_token', token);
+    setCookie(COOKIE_NAME, token, COOKIE_DAYS);
   } else {
-    localStorage.removeItem('mm_token');
+    deleteCookie(COOKIE_NAME);
   }
 };
 
-// ─── HTTP helper ─────────────────────────────────────────────────────────────
+// ─── HTTP helper ──────────────────────────────────────────────────────────────
 async function request<T>(
   method: string,
   path: string,
-  body?: Record<string, unknown>
+  body?: Record<string, unknown>,
 ): Promise<T> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     Accept: 'application/json',
   };
 
-  if (_token) {
-    headers['Authorization'] = `Bearer ${_token}`;
-  }
+  const token = getCookie(COOKIE_NAME);
+  if (token) headers['Authorization'] = `Bearer ${token}`;
 
   const res = await fetch(`${BASE_URL}${path}`, {
     method,
     headers,
+    credentials: 'include',
     body: body ? JSON.stringify(body) : undefined,
   });
 
-  if (!res.ok) {
-    const error = await res.json().catch(() => ({ message: res.statusText }));
-    throw new Error(error.message ?? 'Request failed');
+  // Token expired or invalid
+  if (res.status === 401) {
+    setToken(null);
+    throw new Error('Session expired. Please log in again.');
   }
 
-  // 204 No Content — return empty
-  if (res.status === 204) return undefined as T;
+  if (!res.ok) {
+    // Parse Laravel validation errors and real messages
+    const json = await res.json().catch(() => null);
 
+    // Laravel validation errors come back as { errors: { field: ['msg'] } }
+    if (json?.errors) {
+      const first = Object.values(json.errors as Record<string, string[]>)[0];
+      throw new Error(Array.isArray(first) ? first[0] : String(first));
+    }
+
+    // Laravel throws { message: '...' } for other errors
+    throw new Error(json?.message ?? `Request failed (${res.status})`);
+  }
+
+  if (res.status === 204) return undefined as T;
   return res.json() as Promise<T>;
 }
 
-const get  = <T>(path: string)                                 => request<T>('GET',    path);
-const post = <T>(path: string, body: Record<string, unknown>)  => request<T>('POST',   path, body);
-const put  = <T>(path: string, body: Record<string, unknown>)  => request<T>('PUT',    path, body);
-const del  = <T>(path: string)                                 => request<T>('DELETE', path);
-
+const get  = <T>(path: string)                                => request<T>('GET',    path);
+const post = <T>(path: string, body: Record<string, unknown>) => request<T>('POST',   path, body);
+const put  = <T>(path: string, body: Record<string, unknown>) => request<T>('PUT',    path, body);
+const del  = <T>(path: string)                                => request<T>('DELETE', path);
 
 // ─── AUTH ─────────────────────────────────────────────────────────────────────
 
-/**
- * Replaces: authenticateUser(username, password)
- * Returns the User on success, null on failure
- */
+// Throws on wrong credentials so AuthContext can show the real error message.
+// Previously this caught all errors and returned null, hiding "Invalid credentials".
 export const authenticateUser = async (
   username: string,
-  password: string
-): Promise<User | null> => {
-  try {
-    const data = await post<{ token: string; user: User }>('/login', {
-      username,
-      password,
-    });
-    setToken(data.token);
-    return data.user;
-  } catch {
-    return null;
-  }
+  password: string,
+): Promise<User> => {
+  const data = await post<LoginResponse>('/login', { username, password });
+  setToken(data.token);
+  return data.user;
 };
 
-/**
- * Call on app load to restore session from saved token
- */
 export const restoreSession = async (): Promise<User | null> => {
-  if (!_token) return null;
+  if (!getCookie(COOKIE_NAME)) return null;
   try {
     return await get<User>('/me');
   } catch {
@@ -97,9 +118,6 @@ export const restoreSession = async (): Promise<User | null> => {
   }
 };
 
-/**
- * Replaces: clearing auth state on logout
- */
 export const logout = async (): Promise<void> => {
   try {
     await post('/logout', {});
@@ -108,123 +126,72 @@ export const logout = async (): Promise<void> => {
   }
 };
 
+// ─── USERS ────────────────────────────────────────────────────────────────────
 
-// ─── USERS ───────────────────────────────────────────────────────────────────
-
-/** Replaces: getUsers() */
 export const getUsers = (): Promise<User[]> =>
   get<User[]>('/users');
 
-/** Replaces: getUsersByRole(role) */
 export const getUsersByRole = (role: UserRole): Promise<User[]> =>
   get<User[]>(`/users?role=${role}`);
 
-/** Replaces: saveUser(user) — handles both create and update */
 export const saveUser = async (user: Partial<User> & { password?: string }): Promise<User> => {
-  if (user.id) {
-    return put<User>(`/users/${user.id}`, user as Record<string, unknown>);
-  }
+  if (user.id) return put<User>(`/users/${user.id}`, user as Record<string, unknown>);
   return post<User>('/users', user as Record<string, unknown>);
 };
 
-/** Replaces: deleteUser(userId) */
 export const deleteUser = (userId: string): Promise<void> =>
   del(`/users/${userId}`);
 
-/** Replaces: resetAdminCredentials() — now works for any user */
 export const resetUserPassword = (userId: string, password: string): Promise<void> =>
   post(`/users/${userId}/reset-password`, { password });
 
+// ─── PRODUCTS ─────────────────────────────────────────────────────────────────
 
-// ─── PRODUCTS ────────────────────────────────────────────────────────────────
-
-/** Replaces: getProducts() */
 export const getProducts = (): Promise<Product[]> =>
   get<Product[]>('/products');
 
-/** Replaces: searchProducts(query) */
 export const searchProducts = (query: string): Promise<Product[]> =>
   get<Product[]>(`/products?search=${encodeURIComponent(query)}`);
 
-/** Replaces: getProductById(productId) */
 export const getProductById = (productId: string): Promise<Product> =>
   get<Product>(`/products/${productId}`);
 
-/** Replaces: saveProduct(product) — handles both create and update */
 export const saveProduct = async (product: Partial<Product>): Promise<Product> => {
-  if (product.id) {
-    return put<Product>(`/products/${product.id}`, product as Record<string, unknown>);
-  }
+  if (product.id) return put<Product>(`/products/${product.id}`, product as Record<string, unknown>);
   return post<Product>('/products', product as Record<string, unknown>);
 };
 
-/** Replaces: deleteProduct(productId) */
 export const deleteProduct = (productId: string): Promise<void> =>
   del(`/products/${productId}`);
 
-/** Replaces: getLowStockProducts(threshold) */
 export const getLowStockProducts = (threshold = 10): Promise<Product[]> =>
   get<Product[]>(`/products/low-stock?threshold=${threshold}`);
 
-/**
- * NOTE: updateProductQuantity() no longer exists as a standalone call.
- * Stock is automatically deducted when you call saveTransaction().
- * The backend handles it atomically.
- */
-
-
 // ─── TRANSACTIONS ─────────────────────────────────────────────────────────────
 
-/** Replaces: getTransactions() */
 export const getTransactions = (): Promise<Transaction[]> =>
   get<Transaction[]>('/transactions');
 
-/** Replaces: getTransactionsByDate(date) */
 export const getTransactionsByDate = (date: string): Promise<Transaction[]> =>
   get<Transaction[]>(`/transactions?date=${date}`);
 
-/** Replaces: getTransactionsByType(type) */
-export const getTransactionsByType = (
-  type: 'wholesale' | 'retail'
-): Promise<Transaction[]> =>
+export const getTransactionsByType = (type: 'wholesale' | 'retail'): Promise<Transaction[]> =>
   get<Transaction[]>(`/transactions?type=${type}`);
 
-/**
- * Replaces: saveTransaction(transaction) + updateProductQuantity()
- * Stock deduction now happens automatically on the backend.
- */
 export const saveTransaction = (
-  transaction: Omit<Transaction, 'id' | 'receiptNumber' | 'employeeId' | 'employeeName'>
+  transaction: Omit<Transaction, 'id' | 'receiptNumber' | 'employeeId' | 'employeeName'>,
 ): Promise<Transaction> =>
   post<Transaction>('/transactions', transaction as unknown as Record<string, unknown>);
 
-/**
- * NOTE: generateReceiptNumber() is now handled by the backend.
- * You no longer need to call it from the frontend.
- */
+// ─── REPORTS ──────────────────────────────────────────────────────────────────
 
-
-// ─── REPORTS ─────────────────────────────────────────────────────────────────
-
-/** Replaces: getDailySalesReport(date) */
 export const getDailySalesReport = (date: string): Promise<DailySalesReport> =>
   get<DailySalesReport>(`/reports/daily?date=${date}`);
 
-/** New: get report for a date range */
-export const getRangeReport = (
-  from: string,
-  to: string
-): Promise<DailySalesReport[]> =>
+export const getRangeReport = (from: string, to: string): Promise<DailySalesReport[]> =>
   get<DailySalesReport[]>(`/reports/range?from=${from}&to=${to}`);
 
-/** Replaces: exportDatabase() */
 export const exportDatabase = async (): Promise<string> => {
   const data = await get<Record<string, unknown>>('/reports/export');
   return JSON.stringify(data, null, 2);
 };
-
-/**
- * importDatabase() — NOT implemented as an API endpoint.
- * Restoring data should be done directly on the server via psql.
- * If you need a UI import, ask and I can add an admin-layouts import endpoint.
- */

@@ -1,16 +1,15 @@
+// src/context/AuthContext.tsx
 import React, {
   createContext, useContext, useState, useEffect,
   useRef, useCallback, ReactNode,
 } from 'react';
-import { AuthState, LoginResult, UserRole } from '@/types';
+import { AuthState, LoginResult, UserRole } from '../types';
 import { authenticateUser, restoreSession, logout as apiLogout } from '../api/api';
 
-// ─── Config ───────────────────────────────────────────────────────────────────
-const INACTIVITY_LIMIT_MS = 60 * 60 * 1000;   // 1 hour
-const WARNING_BEFORE_MS   =  5 * 60 * 1000;   // warn 5 min before
-const TICK_INTERVAL_MS    = 10 * 1000;         // check every 10 seconds
+const INACTIVITY_LIMIT_MS = 60 * 60 * 1000;
+const WARNING_BEFORE_MS   =  5 * 60 * 1000;
+const TICK_INTERVAL_MS    = 10 * 1000;
 
-// ─── Types ────────────────────────────────────────────────────────────────────
 interface AuthContextType extends AuthState {
   login:            (username: string, password: string, expectedRole?: UserRole) => Promise<LoginResult>;
   logout:           () => Promise<void>;
@@ -23,7 +22,6 @@ interface AuthContextType extends AuthState {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// ─── Provider ─────────────────────────────────────────────────────────────────
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [authState,        setAuthState]        = useState<AuthState>({ isAuthenticated: false, user: null });
   const [appLoading,       setAppLoading]       = useState(true);
@@ -52,10 +50,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   // ── Record activity ────────────────────────────────────────────────────────
   const recordActivity = useCallback(() => {
     lastActivityRef.current = Date.now();
-    if (showWarning) {
-      setShowWarning(false);
-      setSecondsRemaining(null);
-    }
+    if (showWarning) { setShowWarning(false); setSecondsRemaining(null); }
   }, [showWarning]);
 
   // ── Ticker ─────────────────────────────────────────────────────────────────
@@ -64,11 +59,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     tickRef.current = setInterval(() => {
       const idle      = Date.now() - lastActivityRef.current;
       const remaining = INACTIVITY_LIMIT_MS - idle;
-
-      if (remaining <= 0) {
-        logout();
-        return;
-      }
+      if (remaining <= 0) { logout(); return; }
       if (remaining <= WARNING_BEFORE_MS) {
         setShowWarning(true);
         setSecondsRemaining(Math.ceil(remaining / 1000));
@@ -92,61 +83,79 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     };
   }, [authState.isAuthenticated, recordActivity, startTicker]);
 
-  // ── Restore session on mount ───────────────────────────────────────────────
+  // ── Restore session ────────────────────────────────────────────────────────
   useEffect(() => {
     restoreSession()
-        .then((user) => { if (user) setAuthState({ isAuthenticated: true, user }); })
-        .catch(() => {})
-        .finally(() => setAppLoading(false));
+      .then((user) => { if (user) setAuthState({ isAuthenticated: true, user }); })
+      .catch(() => {})
+      .finally(() => setAppLoading(false));
   }, []);
 
-  // ── Login ──────────────────────────────────────────────────────────────────
+  // ── Login ───────────────────────────────────────────────────────────────────
+  // authenticateUser now THROWS on failure so we catch and return the real message.
+  // Previously it returned null and we showed a generic "Invalid username or password"
+  // even when the real error was something else (network down, server error, etc).
   const login = async (
-      username: string,
-      password: string,
-      expectedRole?: UserRole,
+    username: string,
+    password: string,
+    expectedRole?: UserRole,
   ): Promise<LoginResult> => {
-    const user = await authenticateUser(username, password);
-    if (!user) return { success: false, message: 'Invalid username or password.' };
-    if (expectedRole && user.role !== expectedRole && user.role !== 'admin') {
-      await apiLogout();
-      return { success: false, message: `Access denied. This portal is for ${expectedRole} users only.` };
+    try {
+      const user = await authenticateUser(username, password);
+
+      if (expectedRole && user.role !== expectedRole && user.role !== 'admin') {
+        await apiLogout();
+        return {
+          success: false,
+          message: `Access denied. This portal is for ${expectedRole} users only.`,
+        };
+      }
+
+      lastActivityRef.current = Date.now();
+      setAuthState({ isAuthenticated: true, user });
+      return { success: true, message: '' };
+
+    } catch (err: unknown) {
+      // Surface the real error from the API (wrong password, server down, etc.)
+      return {
+        success: false,
+        message: err instanceof Error
+          ? err.message
+          : 'Login failed. Please try again.',
+      };
     }
-    lastActivityRef.current = Date.now();
-    setAuthState({ isAuthenticated: true, user });
-    return { success: true, message: '' };
   };
 
-  const checkAccess    = (requiredRole: UserRole) => {
+  const checkAccess = (requiredRole: UserRole): boolean => {
     if (!authState.user) return false;
     if (authState.user.role === 'admin') return true;
     return authState.user.role === requiredRole;
   };
 
   const refreshSession = (updatedUser: import('../types').User) =>
-      setAuthState({ isAuthenticated: true, user: updatedUser });
+    setAuthState({ isAuthenticated: true, user: updatedUser });
 
   if (appLoading) {
     return (
-        <div className="min-h-screen bg-gray-900 flex items-center justify-center">
-          <div className="flex items-center gap-3 text-gray-400">
-            <svg className="animate-spin w-6 h-6" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
-            </svg>
-            <span className="text-sm">Loading…</span>
-          </div>
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <div className="flex items-center gap-3 text-gray-400">
+          <svg className="animate-spin w-6 h-6" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+          </svg>
+          <span className="text-sm">Loading…</span>
         </div>
+      </div>
     );
   }
 
   return (
-      <AuthContext.Provider value={{
-        ...authState, login, logout, extendSession,
-        checkAccess, refreshSession, secondsRemaining, showWarning,
-      }}>
-        {children}
-      </AuthContext.Provider>
+    <AuthContext.Provider value={{
+      ...authState, login, logout, extendSession,
+      checkAccess, refreshSession, secondsRemaining, showWarning,
+    }}>
+      {children}
+    </AuthContext.Provider>
   );
 };
 
