@@ -97,8 +97,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     expectedRole?: UserRole,
   ): Promise<LoginResult> => {
     try {
-      const user = await authenticateUser(username, password);
-
+      // const user = await authenticateUser(username, password);
+       const user = await authenticateUser(username, password, expectedRole);
       if (expectedRole && user.role !== expectedRole && user.role !== 'admin') {
         await apiLogout();
         return {

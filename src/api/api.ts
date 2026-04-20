@@ -33,7 +33,6 @@ async function request<T>(
     Accept: 'application/json',
   };
 
-  // Attach XSRF token for all state-changing requests
   const xsrfToken = getXsrfToken();
   if (xsrfToken) {
     headers['X-XSRF-TOKEN'] = xsrfToken;
@@ -52,6 +51,10 @@ async function request<T>(
 
   if (res.status === 419) {
     throw new Error('CSRF token mismatch — please refresh and try again');
+  }
+
+  if (res.status === 429) {
+    throw new Error('Too many login attempts. Please wait a minute and try again.');
   }
 
   if (!res.ok) {
@@ -79,9 +82,14 @@ const del  = <T>(path: string)                                 => request<T>('DE
 export const authenticateUser = async (
   username: string,
   password: string,
+  expectedRole?: UserRole,
 ): Promise<User> => {
   await fetchCsrfCookie();
-  const data = await post<{ user: User }>('/login', { username, password });
+  const data = await post<{ user: User }>('/login', {
+    username,
+    password,
+    ...(expectedRole ? { role: expectedRole } : {}),
+  });
   return data.user;
 };
 
