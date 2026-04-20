@@ -1,51 +1,28 @@
 import {
   User, Product, Transaction,
-  DailySalesReport, UserRole, LoginResponse,
+  DailySalesReport, UserRole,
 } from '../types';
 
 // ─── Config ───────────────────────────────────────────────────────────────────
-const BASE_URL    = import.meta.env.VITE_API_URL ?? 'http://localhost:8000/api';
-const COOKIE_NAME = 'mm_token';
-const COOKIE_DAYS = 1;
 
-// ─── Cookie helpers ───────────────────────────────────────────────────────────
-const setCookie = (name: string, value: string, days: number): void => {
-  const expires = new Date(Date.now() + days * 864e5).toUTCString();
-  document.cookie = [
-    `${name}=${encodeURIComponent(value)}`,
-    `expires=${expires}`,
-    'path=/',
-    'SameSite=Strict',
-    ...(window.location.protocol === 'https:' ? ['Secure'] : []),
-  ].join('; ');
-};
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL ?? 'http://127.0.0.1:8000';
+const BASE_URL    = import.meta.env.VITE_API_URL     ?? `${BACKEND_URL}/api`;
 
-const getCookie = (name: string): string | null => {
-  const match = document.cookie
-    .split('; ')
-    .find((row) => row.startsWith(`${name}=`));
-  return match ? decodeURIComponent(match.split('=')[1]) : null;
-};
+// ─── CSRF Helper ──────────────────────────────────────────────────────────────
 
-const deleteCookie = (name: string): void => {
-  document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; SameSite=Strict`;
-};
+function getXsrfToken(): string {
+  const match = document.cookie.match(/(^|;\s*)XSRF-TOKEN=([^;]+)/);
+  return match ? decodeURIComponent(match[2]) : '';
+}
 
-// ─── Token management ─────────────────────────────────────────────────────────
-let _token: string | null = getCookie(COOKIE_NAME);
+async function fetchCsrfCookie(): Promise<void> {
+  await fetch(`${BACKEND_URL}/sanctum/csrf-cookie`, {
+    credentials: 'include',
+  });
+}
 
-export const getToken = (): string | null => _token;
+// ─── Core Request ─────────────────────────────────────────────────────────────
 
-export const setToken = (token: string | null): void => {
-  _token = token;
-  if (token) {
-    setCookie(COOKIE_NAME, token, COOKIE_DAYS);
-  } else {
-    deleteCookie(COOKIE_NAME);
-  }
-};
-
-// ─── HTTP helper ──────────────────────────────────────────────────────────────
 async function request<T>(
   method: string,
   path: string,
@@ -56,8 +33,11 @@ async function request<T>(
     Accept: 'application/json',
   };
 
-  const token = getCookie(COOKIE_NAME);
-  if (token) headers['Authorization'] = `Bearer ${token}`;
+  // Attach XSRF token for all state-changing requests
+  const xsrfToken = getXsrfToken();
+  if (xsrfToken) {
+    headers['X-XSRF-TOKEN'] = xsrfToken;
+  }
 
   const res = await fetch(`${BASE_URL}${path}`, {
     method,
@@ -66,67 +46,58 @@ async function request<T>(
     body: body ? JSON.stringify(body) : undefined,
   });
 
-  // Token expired or invalid
   if (res.status === 401) {
-    setToken(null);
-    throw new Error('Session expired. Please log in again.');
+    throw new Error('Not authenticated');
+  }
+
+  if (res.status === 419) {
+    throw new Error('CSRF token mismatch — please refresh and try again');
   }
 
   if (!res.ok) {
-    // Parse Laravel validation errors and real messages
     const json = await res.json().catch(() => null);
 
-    // Laravel validation errors come back as { errors: { field: ['msg'] } }
     if (json?.errors) {
-      const first = Object.values(json.errors as Record<string, string[]>)[0];
+      const first = Object.values(json.errors)[0];
       throw new Error(Array.isArray(first) ? first[0] : String(first));
     }
 
-    // Laravel throws { message: '...' } for other errors
     throw new Error(json?.message ?? `Request failed (${res.status})`);
   }
 
   if (res.status === 204) return undefined as T;
-  return res.json() as Promise<T>;
+  return res.json();
 }
 
-const get  = <T>(path: string)                                => request<T>('GET',    path);
-const post = <T>(path: string, body: Record<string, unknown>) => request<T>('POST',   path, body);
-const put  = <T>(path: string, body: Record<string, unknown>) => request<T>('PUT',    path, body);
-const del  = <T>(path: string)                                => request<T>('DELETE', path);
+const get  = <T>(path: string)                                 => request<T>('GET',    path);
+const post = <T>(path: string, body: Record<string, unknown>)  => request<T>('POST',   path, body);
+const put  = <T>(path: string, body: Record<string, unknown>)  => request<T>('PUT',    path, body);
+const del  = <T>(path: string)                                 => request<T>('DELETE', path);
 
-// ─── AUTH ─────────────────────────────────────────────────────────────────────
+// ─── Auth ─────────────────────────────────────────────────────────────────────
 
-// Throws on wrong credentials so AuthContext can show the real error message.
-// Previously this caught all errors and returned null, hiding "Invalid credentials".
 export const authenticateUser = async (
   username: string,
   password: string,
 ): Promise<User> => {
-  const data = await post<LoginResponse>('/login', { username, password });
-  setToken(data.token);
+  await fetchCsrfCookie();
+  const data = await post<{ user: User }>('/login', { username, password });
   return data.user;
 };
 
 export const restoreSession = async (): Promise<User | null> => {
-  if (!getCookie(COOKIE_NAME)) return null;
   try {
     return await get<User>('/me');
   } catch {
-    setToken(null);
     return null;
   }
 };
 
 export const logout = async (): Promise<void> => {
-  try {
-    await post('/logout', {});
-  } finally {
-    setToken(null);
-  }
+  await post('/logout', {});
 };
 
-// ─── USERS ────────────────────────────────────────────────────────────────────
+// ─── Users ────────────────────────────────────────────────────────────────────
 
 export const getUsers = (): Promise<User[]> =>
   get<User[]>('/users');
@@ -134,7 +105,9 @@ export const getUsers = (): Promise<User[]> =>
 export const getUsersByRole = (role: UserRole): Promise<User[]> =>
   get<User[]>(`/users?role=${role}`);
 
-export const saveUser = async (user: Partial<User> & { password?: string }): Promise<User> => {
+export const saveUser = async (
+  user: Partial<User> & { password?: string },
+): Promise<User> => {
   if (user.id) return put<User>(`/users/${user.id}`, user as Record<string, unknown>);
   return post<User>('/users', user as Record<string, unknown>);
 };
@@ -145,7 +118,7 @@ export const deleteUser = (userId: string): Promise<void> =>
 export const resetUserPassword = (userId: string, password: string): Promise<void> =>
   post(`/users/${userId}/reset-password`, { password });
 
-// ─── PRODUCTS ─────────────────────────────────────────────────────────────────
+// ─── Products ─────────────────────────────────────────────────────────────────
 
 export const getProducts = (): Promise<Product[]> =>
   get<Product[]>('/products');
@@ -167,7 +140,7 @@ export const deleteProduct = (productId: string): Promise<void> =>
 export const getLowStockProducts = (threshold = 10): Promise<Product[]> =>
   get<Product[]>(`/products/low-stock?threshold=${threshold}`);
 
-// ─── TRANSACTIONS ─────────────────────────────────────────────────────────────
+// ─── Transactions ─────────────────────────────────────────────────────────────
 
 export const getTransactions = (): Promise<Transaction[]> =>
   get<Transaction[]>('/transactions');
@@ -175,7 +148,9 @@ export const getTransactions = (): Promise<Transaction[]> =>
 export const getTransactionsByDate = (date: string): Promise<Transaction[]> =>
   get<Transaction[]>(`/transactions?date=${date}`);
 
-export const getTransactionsByType = (type: 'wholesale' | 'retail'): Promise<Transaction[]> =>
+export const getTransactionsByType = (
+  type: 'wholesale' | 'retail',
+): Promise<Transaction[]> =>
   get<Transaction[]>(`/transactions?type=${type}`);
 
 export const saveTransaction = (
@@ -183,7 +158,7 @@ export const saveTransaction = (
 ): Promise<Transaction> =>
   post<Transaction>('/transactions', transaction as unknown as Record<string, unknown>);
 
-// ─── REPORTS ──────────────────────────────────────────────────────────────────
+// ─── Reports ──────────────────────────────────────────────────────────────────
 
 export const getDailySalesReport = (date: string): Promise<DailySalesReport> =>
   get<DailySalesReport>(`/reports/daily?date=${date}`);

@@ -1,4 +1,3 @@
-// src/context/AuthContext.tsx
 import React, {
   createContext, useContext, useState, useEffect,
   useRef, useCallback, ReactNode,
@@ -91,10 +90,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       .finally(() => setAppLoading(false));
   }, []);
 
-  // ── Login ───────────────────────────────────────────────────────────────────
-  // authenticateUser now THROWS on failure so we catch and return the real message.
-  // Previously it returned null and we showed a generic "Invalid username or password"
-  // even when the real error was something else (network down, server error, etc).
+  
   const login = async (
     username: string,
     password: string,
