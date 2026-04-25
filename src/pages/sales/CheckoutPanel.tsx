@@ -1,6 +1,6 @@
 import React from 'react';
 import { format } from 'date-fns';
-import { Check } from 'lucide-react';
+import { Check, CalendarDays } from 'lucide-react';
 import Button from '../../components/common/Button.tsx';
 
 interface CheckoutPanelProps {
@@ -26,59 +26,67 @@ const CheckoutPanel: React.FC<CheckoutPanelProps> = ({
   onCustomerSignatureChange,
   onCompleteSale,
 }) => {
-  const accent = type === 'wholesale' ? 'blue' : 'green' as const;
-  const accentBg = type === 'wholesale' ? 'bg-blue-600/20' : 'bg-green-600/20';
+  const accent       = type === 'wholesale' ? 'blue' : 'green' as const;
+  const totalRingBg  = type === 'wholesale' ? 'bg-blue-50 border-blue-100'  : 'bg-green-50 border-green-100';
+  const totalRingText = type === 'wholesale' ? 'text-blue-700' : 'text-green-700';
 
   return (
-    <div className="bg-gray-800 rounded-xl border border-gray-700 p-4 space-y-4">
+    <div className="px-4 pb-4 pt-3 space-y-3">
+
       {/* Date */}
-      <div className="flex justify-between text-xs text-gray-500">
-        <span>Transaction date</span>
-        <span>{format(new Date(), 'MMMM dd, yyyy — HH:mm')}</span>
+      <div className="flex items-center gap-2 text-xs text-gray-400">
+        <CalendarDays className="w-3.5 h-3.5 shrink-0" />
+        <span>{format(new Date(), 'EEE, MMM dd yyyy · HH:mm')}</span>
       </div>
 
-      {/* Signatures */}
-      <div className="grid grid-cols-2 gap-3">
+      {/* Signatures — side by side, compact */}
+      <div className="grid grid-cols-2 gap-2">
         <div>
-          <label className="block text-gray-400 text-xs font-medium mb-1.5">Employee Signature</label>
-          <input
-            type="text"
-            value={employeeSignature}
-            onChange={(e) => onEmployeeSignatureChange(e.target.value)}
-            placeholder={employeeUsername}
-            className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 text-sm focus:outline-none focus:border-orange-500 transition-colors"
-          />
-        </div>
-        <div>
-          <label className="block text-gray-400 text-xs font-medium mb-1.5">Customer Signature</label>
+          <label className="block text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1">
+            Customer Sig.
+          </label>
           <input
             type="text"
             value={customerSignature}
             onChange={(e) => onCustomerSignatureChange(e.target.value)}
             placeholder="Optional"
-            className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 text-sm focus:outline-none focus:border-orange-500 transition-colors"
+            className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-700 placeholder-gray-400 text-xs focus:outline-none focus:border-blue-300 transition-all"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1">
+            Employee Sig.
+          </label>
+          <input
+            type="text"
+            value={employeeSignature}
+            onChange={(e) => onEmployeeSignatureChange(e.target.value)}
+            placeholder={employeeUsername}
+            className="w-full px-3 py-2 bg-gray-50 border border-gray-100 rounded-lg text-gray-500 placeholder-gray-400 text-xs focus:outline-none focus:border-gray-300 transition-all"
           />
         </div>
       </div>
 
-      {/* Total */}
-      <div className={`flex justify-between items-center p-4 rounded-xl ${accentBg} border border-gray-700`}>
-        <span className="text-white font-bold text-lg">Total Amount</span>
-        <span className="text-orange-400 font-black text-3xl">GH₵{total.toFixed(2)}</span>
+      {/* Total + Button row */}
+      <div className={`flex items-center justify-between px-4 py-3 rounded-xl border ${totalRingBg}`}>
+        <div>
+          <p className="text-xs font-bold uppercase tracking-widest text-gray-400">Total</p>
+          <p className={`text-xl font-black tracking-tight ${totalRingText}`}>
+            GH₵{total.toFixed(2)}
+          </p>
+        </div>
+        <Button
+          variant="primary"
+          color={accent}
+          size="sm"
+          disabled={cartEmpty}
+          icon={<Check className="w-4 h-4" />}
+          onClick={onCompleteSale}
+        >
+          Complete &amp; Print
+        </Button>
       </div>
 
-      {/* Complete */}
-      <Button
-        variant="primary"
-        color={accent}
-        size="lg"
-        fullWidth
-        disabled={cartEmpty}
-        icon={<Check className="w-5 h-5" />}
-        onClick={onCompleteSale}
-      >
-        Complete Sale &amp; Print Receipt
-      </Button>
     </div>
   );
 };

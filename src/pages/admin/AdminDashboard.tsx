@@ -1,71 +1,81 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext.tsx';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 
-import AdminSidebar        from '@/components/admin-layouts/AdminSidebar.tsx';
-import AdminHeader         from '@/components/admin-layouts/AdminHeader.tsx';
-import OverviewTab         from '@/pages/admin/overview/OverviewTab.tsx';
-import EmployeeManagement  from './EmployeeManagement.tsx';
-import ProductManagement   from './ProductManagement.tsx';
-import SalesReport         from './SalesReport.tsx';
-import TransactionHistory  from './TransactionHistory.tsx';
-import BackupRestore       from './BackupRestore.tsx';
-import ChangeAdminCredentials from './ChangeAdminCredentials.tsx';
+import AdminSidebar from '@/components/admin-layouts/AdminSidebar';
+import AdminHeader  from '@/components/admin-layouts/AdminHeader';
 
-// Exported so sibling components (QuickActions, AdminSidebar) can import it
 export type TabType =
-    | 'overview'
-    | 'employees'
-    | 'products'
-    | 'reports'
-    | 'transactions'
-    | 'backup'
-    | 'credentials';
+  | 'overview'
+  | 'employees'
+  | 'products'
+  | 'inventory'
+  | 'reports'
+  | 'transactions'
+  | 'backup'
+  | 'credentials';
 
-const AdminDashboard: React.FC = () => {
-  const navigate              = useNavigate();
-  const { user, logout }      = useAuth();
-  const [activeTab, setActiveTab] = useState<TabType>('overview');
+// Map routes to tab keys
+const routeToTab: Record<string, TabType> = {
+  '/admin':             'overview',
+  '/admin/employees':   'employees',
+  '/admin/products':    'products',
+  '/admin/inventory':   'inventory',
+  '/admin/reports':     'reports',
+  '/admin/transactions':'transactions',
+  '/admin/backup':      'backup',
+  '/admin/credentials': 'credentials',
+};
+
+const tabToRoute: Record<TabType, string> = {
+  overview:     '/admin',
+  employees:    '/admin/employees',
+  products:     '/admin/products',
+  inventory:    '/admin/inventory',
+  reports:      '/admin/reports',
+  transactions: '/admin/transactions',
+  backup:       '/admin/backup',
+  credentials:  '/admin/credentials',
+};
+
+interface AdminDashboardProps {
+  children: React.ReactNode;
+}
+
+const AdminDashboard: React.FC<AdminDashboardProps> = ({ children }) => {
+  const navigate         = useNavigate();
+  const location         = useLocation();
+  const { user, logout } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
-  const handleLogout = async () => {
-    await logout();
-    navigate('/', { replace: true });
-  };
+  const activeTab: TabType = routeToTab[location.pathname] ?? 'overview';
 
-  const renderContent = () => {
-    switch (activeTab) {
-      case 'employees':    return <EmployeeManagement />;
-      case 'products':     return <ProductManagement />;
-      case 'reports':      return <SalesReport />;
-      case 'transactions': return <TransactionHistory />;
-      case 'backup':       return <BackupRestore />;
-      case 'credentials':  return <ChangeAdminCredentials />;
-      default:             return <OverviewTab onNavigate={setActiveTab} />;
-    }
-  };
+  const handleTabChange = (tab: TabType) => navigate(tabToRoute[tab]);
+  const handleLogout    = async () => { await logout(); navigate('/', { replace: true }); };
 
   return (
-      <div className="min-h-screen bg-gray-900 flex">
-        <AdminSidebar
-            activeTab={activeTab}
-            open={sidebarOpen}
-            user={user}
-            onTabChange={setActiveTab}
-            onLogout={handleLogout}
-        />
+<div className="min-h-screen bg-stone-100 flex">
+          <AdminSidebar
+        activeTab={activeTab}
+        open={sidebarOpen}
+        user={user}
+        onTabChange={handleTabChange}
+        onLogout={handleLogout}
+      />
 
-        <main className="flex-1 overflow-auto flex flex-col min-h-screen">
-          <AdminHeader
-              activeTab={activeTab}
-              username={user?.username ?? ''}
-              onToggleSidebar={() => setSidebarOpen((v) => !v)}
-          />
-          <div className="p-6 flex-1">
-            {renderContent()}
-          </div>
-        </main>
-      </div>
+      {/* Offset main content by sidebar width so fixed sidebar doesn't overlap it */}
+      <main className={`flex-1 flex flex-col min-h-screen overflow-auto transition-all duration-300
+        ${sidebarOpen ? 'ml-64' : 'ml-16'}`}>
+        <AdminHeader
+          activeTab={activeTab}
+          username={user?.username ?? ''}
+          onToggleSidebar={() => setSidebarOpen((v) => !v)}
+        />
+        <div className="p-6 flex-1">
+          {children}
+        </div>
+      </main>
+    </div>
   );
 };
 

@@ -1,68 +1,89 @@
 import React from 'react';
-import { Package, DollarSign, TrendingUp, AlertTriangle } from 'lucide-react';
+import { Package, DollarSign, TrendingUp, AlertTriangle, CalendarX } from 'lucide-react';
 
 interface StatsCardsProps {
-    totalProducts: number;
-    todaySales: number;
-    todayTransactions: number;
-    lowStockCount: number;
+  totalProducts:     number;
+  todaySales:        number;
+  todayTransactions: number;
+  lowStockCount:     number;
+  expiryProducts:    number;
 }
 
 const StatsCards: React.FC<StatsCardsProps> = ({
-                                                   totalProducts,
-                                                   todaySales,
-                                                   todayTransactions,
-                                                   lowStockCount,
-                                               }) => {
-    const cards = [
-        {
-            label:   'Total Products',
-            value:   totalProducts,
-            icon:    <Package className="w-10 h-10 text-blue-200" />,
-            gradient: 'from-blue-500 to-blue-600',
-            textMuted: 'text-blue-100',
-        },
-        {
-            label:   "Today's Sales",
-            value:   `GH₵${todaySales.toFixed(2)}`,
-            icon:    <DollarSign className="w-10 h-10 text-green-200" />,
-            gradient: 'from-green-500 to-green-600',
-            textMuted: 'text-green-100',
-        },
-        {
-            label:   "Today's Transactions",
-            value:   todayTransactions,
-            icon:    <TrendingUp className="w-10 h-10 text-purple-200" />,
-            gradient: 'from-purple-500 to-purple-600',
-            textMuted: 'text-purple-100',
-        },
-        {
-            label:   'Low Stock Items',
-            value:   lowStockCount,
-            icon:    <AlertTriangle className={`w-10 h-10 ${lowStockCount > 0 ? 'text-red-200' : 'text-gray-200'}`} />,
-            gradient: lowStockCount > 0 ? 'from-red-500 to-red-600' : 'from-gray-500 to-gray-600',
-            textMuted: lowStockCount > 0 ? 'text-red-100' : 'text-gray-100',
-        },
-    ];
+  totalProducts,
+  todaySales,
+  todayTransactions,
+  lowStockCount,
+  expiryProducts,
+}) => {
+  const cards = [
+    {
+      label:   'Total Products',
+      value:   totalProducts,
+      sub:     'In inventory',
+      icon:    Package,
+      iconBg:  'bg-blue-50 text-blue-400',
+    },
+    {
+      label:   "Today's Sales",
+      value:   `GH₵${todaySales.toFixed(2)}`,
+      sub:     'Revenue today',
+      icon:    DollarSign,
+      iconBg:  'bg-green-50 text-green-400',
+    },
+    {
+      label:   'Transactions',
+      value:   todayTransactions,
+      sub:     'Today',
+      icon:    TrendingUp,
+      iconBg:  'bg-purple-50 text-purple-400',
+    },
+    {
+      label:   'Low Stock',
+      value:   lowStockCount,
+      sub:     lowStockCount > 0 ? 'Needs restocking' : 'All good',
+      icon:    AlertTriangle,
+      iconBg:  lowStockCount > 0 ? 'bg-red-50 text-red-400' : 'bg-gray-50 text-gray-300',
+    },
+    {
+      label:   'Expiring / Expired',
+      value:   expiryProducts,
+      sub:     expiryProducts > 0 ? 'Needs attention' : 'All valid',
+      icon:    CalendarX,
+      iconBg:  expiryProducts > 0 ? 'bg-amber-50 text-amber-400' : 'bg-gray-50 text-gray-300',
+    },
+  ];
 
-    return (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {cards.map((card) => (
-                <div
-                    key={card.label}
-                    className={`bg-gradient-to-br ${card.gradient} rounded-xl p-5 text-white shadow-lg`}
-                >
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <p className={`${card.textMuted} text-sm`}>{card.label}</p>
-                            <p className="text-3xl font-bold mt-1">{card.value}</p>
-                        </div>
-                        {card.icon}
-                    </div>
-                </div>
-            ))}
-        </div>
-    );
+  return (
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+      {cards.map((card) => {
+        const Icon = card.icon;
+        return (
+          <div
+            key={card.label}
+            className="bg-white rounded-xl border border-gray-200 px-4 py-3.5
+              shadow-md hover:shadow-lg transition-shadow duration-200"
+          >
+            {/* Icon + label row */}
+            <div className="flex items-start justify-between mb-2">
+              <p className="text-xs text-gray-400 font-medium leading-tight">{card.label}</p>
+              <div className={`${card.iconBg} p-1.5 rounded-lg flex-shrink-0 ml-2`}>
+                <Icon size={14} />
+              </div>
+            </div>
+
+            {/* Value */}
+            <p className="text-2xl font-bold text-gray-800 leading-none tabular-nums truncate">
+              {card.value}
+            </p>
+
+            {/* Sub-label */}
+            <p className="text-xs text-gray-400 mt-1">{card.sub}</p>
+          </div>
+        );
+      })}
+    </div>
+  );
 };
 
 export default StatsCards;

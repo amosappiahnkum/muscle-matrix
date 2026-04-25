@@ -3,50 +3,57 @@ import { Users, Package, BarChart3, Download, KeyRound } from 'lucide-react';
 import { TabType } from '../AdminDashboard.tsx';
 
 interface QuickActionsProps {
-    onNavigate: (tab: TabType) => void;
+  onNavigate: (tab: TabType) => void;
 }
 
 const actions = [
-    { tab: 'employees' as TabType, label: 'Manage Employees', icon: Users,    color: 'text-blue-400' },
-    { tab: 'products'  as TabType, label: 'Manage Products',  icon: Package,  color: 'text-green-400' },
-    { tab: 'reports'   as TabType, label: 'View Reports',     icon: BarChart3, color: 'text-purple-400' },
-    { tab: 'backup'    as TabType, label: 'Backup Data',      icon: Download, color: 'text-orange-400' },
+  { tab: 'employees' as TabType, label: 'Manage Employees', icon: Users,    iconWrap: 'bg-blue-50 text-blue-500',   border: 'border-blue-100',   hover: 'hover:border-blue-300 hover:bg-blue-50' },
+  { tab: 'products'  as TabType, label: 'Manage Products',  icon: Package,  iconWrap: 'bg-green-50 text-green-500', border: 'border-green-100',  hover: 'hover:border-green-300 hover:bg-green-50' },
+  { tab: 'reports'   as TabType, label: 'View Reports',     icon: BarChart3, iconWrap: 'bg-purple-50 text-purple-500', border: 'border-purple-100', hover: 'hover:border-purple-300 hover:bg-purple-50' },
+  { tab: 'backup'    as TabType, label: 'Backup Data',      icon: Download, iconWrap: 'bg-orange-50 text-orange-500', border: 'border-orange-100', hover: 'hover:border-orange-300 hover:bg-orange-50' },
 ];
 
 const QuickActions: React.FC<QuickActionsProps> = ({ onNavigate }) => (
-    <div className="space-y-4">
-        {/* Action grid */}
-        <div className="bg-gray-800/50 rounded-xl p-5 border border-gray-700">
-            <h3 className="text-lg font-bold text-white mb-4">Quick Actions</h3>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {actions.map(({ tab, label, icon: Icon, color }) => (
-                    <button
-                        key={tab}
-                        onClick={() => onNavigate(tab)}
-                        className="bg-gray-700 hover:bg-gray-600 rounded-lg p-4 text-center transition-colors"
-                    >
-                        <Icon className={`w-8 h-8 ${color} mx-auto mb-2`} />
-                        <span className="text-white text-sm">{label}</span>
-                    </button>
-                ))}
-            </div>
-        </div>
+  <div className="space-y-4">
 
-        {/* Change credentials banner */}
-        <button
-            onClick={() => onNavigate('credentials')}
-            className="w-full bg-gradient-to-r from-purple-600/10 to-purple-800/10 border border-purple-600/30 rounded-xl p-4 flex items-center gap-4 hover:border-purple-500/50 transition-colors text-left"
-        >
-            <div className="bg-purple-600/20 p-3 rounded-lg">
-                <KeyRound className="w-6 h-6 text-purple-400" />
+    {/* Action grid */}
+    <div className="bg-white rounded-xl p-5 border border-gray-200 ">
+      <h3 className="text-base font-semibold text-gray-900 mb-4">Quick Actions</h3>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {actions.map(({ tab, label, icon: Icon, iconWrap, border, hover }) => (
+          <button
+            key={tab}
+            onClick={() => onNavigate(tab)}
+            className={`bg-white ${border} ${hover} border rounded-xl p-4 text-center
+              transition-all duration-200 hover:shadow-sm`}
+          >
+            <div className={`${iconWrap} w-10 h-10 rounded-xl flex items-center justify-center mx-auto mb-2.5`}>
+              <Icon size={20} />
             </div>
-            <div className="flex-1">
-                <p className="text-white font-semibold">Change Admin Name &amp; Password</p>
-                <p className="text-gray-400 text-sm">Update your admin login credentials securely</p>
-            </div>
-            <span className="text-purple-400 text-sm font-medium">Update →</span>
-        </button>
+            <span className="text-gray-700 text-sm font-medium">{label}</span>
+          </button>
+        ))}
+      </div>
     </div>
+
+    {/* Change credentials banner */}
+    <button
+      onClick={() => onNavigate('credentials')}
+      className="w-full bg-white border border-purple-200 rounded-xl p-4
+        flex items-center gap-4 text-left 
+        hover:border-purple-400 hover:shadow-md transition-all duration-200"
+    >
+      <div className="bg-purple-50 p-3 rounded-xl flex-shrink-0">
+        <KeyRound size={20} className="text-purple-500" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-gray-900 font-semibold text-sm">Change Admin Name &amp; Password</p>
+        <p className="text-gray-400 text-xs mt-0.5">Update your admin login credentials securely</p>
+      </div>
+      <span className="text-purple-500 text-sm font-semibold flex-shrink-0">Update →</span>
+    </button>
+
+  </div>
 );
 
 export default QuickActions;

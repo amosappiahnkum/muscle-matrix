@@ -2,11 +2,11 @@ import React, { useEffect } from 'react';
 import { X } from 'lucide-react';
 
 interface ModalProps {
-  open: boolean;
-  onClose?: () => void;
-  title?: string;
-  children: React.ReactNode;
-  maxWidth?: 'sm' | 'md' | 'lg';
+  open:        boolean;
+  onClose?:    () => void;
+  title?:      string;
+  children:    React.ReactNode;
+  maxWidth?:   'sm' | 'md' | 'lg';
   /** If true, clicking the backdrop does NOT close */
   persistent?: boolean;
 }
@@ -25,6 +25,7 @@ const Modal: React.FC<ModalProps> = ({
   maxWidth = 'md',
   persistent = false,
 }) => {
+
   // Close on Escape
   useEffect(() => {
     if (!open) return;
@@ -39,23 +40,29 @@ const Modal: React.FC<ModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4
+        bg-black/40 backdrop-blur-sm"
       onClick={() => !persistent && onClose?.()}
     >
       <div
-        className={`w-full ${maxWidthMap[maxWidth]} bg-gray-800 rounded-2xl border border-gray-700 shadow-2xl`}
+        className={`w-full ${maxWidthMap[maxWidth]} bg-white rounded-2xl
+          border border-gray-200 shadow-xl`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         {(title || onClose) && (
-          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-700">
-            {title && <h2 className="text-lg font-bold text-white">{title}</h2>}
+          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+            {title && (
+              <h2 className="text-base font-semibold text-gray-900">{title}</h2>
+            )}
             {onClose && !persistent && (
               <button
                 onClick={onClose}
-                className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
+                className="p-1.5 rounded-lg text-gray-400
+                  hover:text-gray-700 hover:bg-gray-100
+                  transition-colors duration-150 ml-auto"
               >
-                <X className="w-5 h-5" />
+                <X size={18} />
               </button>
             )}
           </div>

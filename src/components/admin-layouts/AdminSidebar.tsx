@@ -1,7 +1,7 @@
 import React from 'react';
 import {
   Dumbbell, Users, Package, BarChart3,
-  LogOut, FileText, ShoppingCart, Download, KeyRound,
+  LogOut, FileText, ShoppingCart, Download, KeyRound, ClipboardList,
 } from 'lucide-react';
 import { TabType } from '../../pages/admin/AdminDashboard';
 import { User } from '../../types';
@@ -15,76 +15,97 @@ interface AdminSidebarProps {
 }
 
 const menuItems: { id: TabType; label: string; icon: React.FC<{ className?: string }> }[] = [
-  { id: 'overview',     label: 'Overview',          icon: BarChart3    },
-  { id: 'employees',    label: 'Employees',          icon: Users        },
-  { id: 'products',     label: 'Products',           icon: Package      },
-  { id: 'reports',      label: 'Sales Reports',      icon: FileText     },
-  { id: 'transactions', label: 'Transactions',       icon: ShoppingCart },
-  { id: 'backup',       label: 'Backup & Restore',   icon: Download     },
-  { id: 'credentials',  label: 'Change Credentials', icon: KeyRound     },
+  { id: 'overview',     label: 'Overview',           icon: BarChart3    },
+  { id: 'employees',    label: 'Employees',           icon: Users        },
+  { id: 'products',     label: 'Products',            icon: Package      },
+  { id: 'inventory',    label: 'Inventory',           icon: ClipboardList },
+  { id: 'reports',      label: 'Sales Reports',       icon: FileText     },
+  { id: 'transactions', label: 'Transactions',        icon: ShoppingCart },
+  { id: 'backup',       label: 'Backup & Restore',    icon: Download     },
+  { id: 'credentials',  label: 'Change Credentials',  icon: KeyRound     },
 ];
 
 const AdminSidebar: React.FC<AdminSidebarProps> = ({
   activeTab, open, user, onTabChange, onLogout,
 }) => (
+  // fixed + h-screen keeps the sidebar pinned while content scrolls
   <aside
     className={`${
       open ? 'w-64' : 'w-16'
-    } sticky top-0 h-screen bg-gray-800 border-r border-gray-700 flex flex-col transition-all duration-300 flex-shrink-0 z-30`}
+    } fixed top-0 left-0 h-screen bg-gray-900 border-r border-gray-800
+      flex flex-col transition-all duration-300 flex-shrink-0 z-30`}
   >
-    {/* Logo */}
-    <div className="p-4 border-b border-gray-700 flex-shrink-0">
+    {/* ── Logo ───────────────────────────────────────────────────────── */}
+    <div className="flex-shrink-0 px-4 py-5 border-b border-gray-800">
       <div className="flex items-center gap-3">
-        <div className="bg-orange-600 p-2 rounded-lg flex-shrink-0">
-          <Dumbbell className="w-6 h-6 text-white" />
+        <div className="bg-orange-500 p-2 rounded-xl flex-shrink-0 shadow-md">
+          <Dumbbell className="w-5 h-5 text-white" />
         </div>
         {open && (
-          <div>
-            <h1 className="text-white font-black text-sm tracking-wider">MUSCLE MATRIX</h1>
-            <p className="text-gray-400 text-xs">Admin Panel</p>
+          <div className="overflow-hidden">
+            <h1 className="text-white font-black text-sm tracking-widest uppercase">
+              Muscle Matrix
+            </h1>
+            <p className="text-gray-500 text-xs">Admin Panel</p>
           </div>
         )}
       </div>
     </div>
 
-    {/* Nav — scrollable if items overflow */}
-    <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
+    {/* ── Nav ─────────────────────────────────────────────────────────── */}
+    {/* flex-1 + overflow-y-auto lets nav scroll if items overflow, logo/footer stay fixed */}
+    <nav className="flex-1 overflow-y-auto px-2 py-3 space-y-0.5">
       {menuItems.map((item) => {
-        const isActive    = activeTab === item.id;
-        const activeColor = item.id === 'credentials'
-          ? 'bg-purple-600 text-white'
-          : 'bg-orange-600 text-white';
+        const isActive = activeTab === item.id;
+        const activeClass = item.id === 'credentials'
+          ? 'bg-purple-600/20 text-purple-300 border border-purple-700/40'
+          : 'bg-orange-500/20 text-orange-300 border border-orange-600/30';
 
         return (
           <button
             key={item.id}
             onClick={() => onTabChange(item.id)}
             title={!open ? item.label : undefined}
-            className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg transition-colors ${
-              isActive ? activeColor : 'text-gray-300 hover:bg-gray-700'
-            }`}
+            className={`
+              w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-150
+              ${isActive
+                ? activeClass
+                : 'text-gray-400 hover:bg-gray-800 hover:text-gray-200 border border-transparent'
+              }
+            `}
           >
-            <item.icon className="w-5 h-5 flex-shrink-0" />
-            {open && <span className="text-sm">{item.label}</span>}
+            <item.icon className={`w-4 h-4 flex-shrink-0 ${isActive ? '' : 'opacity-70'}`} />
+            {open && (
+              <span className="text-sm font-medium truncate">{item.label}</span>
+            )}
+            {/* Active dot when collapsed */}
+            {!open && isActive && (
+              <span className="absolute left-11 w-1.5 h-1.5 rounded-full bg-orange-400" />
+            )}
           </button>
         );
       })}
     </nav>
 
-    <div className="p-3 border-t border-gray-700 flex-shrink-0">
+    {/* ── Footer ──────────────────────────────────────────────────────── */}
+    <div className="flex-shrink-0 px-2 py-3 border-t border-gray-800 space-y-2">
       {open && user && (
-        <div className="bg-gray-700/50 rounded-lg p-3 mb-2">
-          <p className="text-white font-medium text-sm truncate">{user.username}</p>
-          <p className="text-gray-400 text-xs capitalize">{user.role}</p>
+        <div className="bg-gray-800 rounded-xl px-3 py-2.5">
+          <p className="text-white font-semibold text-sm truncate">{user.username}</p>
+          <p className="text-gray-500 text-xs capitalize">{user.role}</p>
         </div>
       )}
       <button
         onClick={onLogout}
         title="Logout"
-        className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-red-600/20 text-red-400 rounded-lg hover:bg-red-600/30 transition-colors"
+        className={`
+          w-full flex items-center gap-2 px-3 py-2.5 rounded-xl
+          bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors
+          ${open ? 'justify-start' : 'justify-center'}
+        `}
       >
-        <LogOut className="w-5 h-5 flex-shrink-0" />
-        {open && <span className="text-sm">Logout</span>}
+        <LogOut className="w-4 h-4 flex-shrink-0" />
+        {open && <span className="text-sm font-medium">Logout</span>}
       </button>
     </div>
   </aside>
