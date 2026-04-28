@@ -215,7 +215,7 @@ const SalesPortal: React.FC<SalesPortalProps> = ({ type }) => {
 
   // ── Sale view ──────────────────────────────────────────────────────────────
   return (
-    <div className="h-screen flex flex-col overflow-hidden">
+    <div className="h-screen bg-stone-100 flex flex-col overflow-hidden">
 
       <ConfirmSaleModal
         open={showConfirm}

@@ -45,7 +45,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
     : 'bg-green-50 text-green-600 border border-green-200';
 
   return (
-    <div className="min-h-screen bg-white flex flex-col">
+    <div className="min-h-screen bg-stone-100 flex flex-col">
 
       {/* ── Header ── */}
       <header className="bg-white border-b border-gray-100 px-6 py-4 shadow-sm">

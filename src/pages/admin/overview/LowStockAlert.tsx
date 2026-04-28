@@ -31,8 +31,8 @@ const LowStockAlert: React.FC<LowStockAlertProps> = ({ products }) => {
             <tr className="bg-gray-50 sticky top-0 z-10">
               <th className="text-left text-xs font-semibold text-gray-400 tracking-wider uppercase px-6 py-3">#</th>
               <th className="text-left text-xs font-semibold text-gray-400 tracking-wider uppercase px-4 py-3">Product</th>
-              <th className="text-left text-xs font-semibold text-gray-400 tracking-wider uppercase px-4 py-3">Category</th>
-              <th className="text-left text-xs font-semibold text-gray-400 tracking-wider uppercase px-4 py-3">Price</th>
+              <th className="text-left text-xs font-semibold text-gray-400 tracking-wider uppercase px-4 py-3">Quantity</th>
+              {/* <th className="text-left text-xs font-semibold text-gray-400 tracking-wider uppercase px-4 py-3">Price</th> */}
               <th className="text-right text-xs font-semibold text-gray-400 tracking-wider uppercase px-6 py-3">Qty Left</th>
             </tr>
           </thead>
@@ -51,12 +51,12 @@ const LowStockAlert: React.FC<LowStockAlertProps> = ({ products }) => {
                     <span className="font-medium text-gray-800 truncate max-w-[160px]">{product.name}</span>
                   </div>
                 </td>
-                <td className="px-4 py-3 text-gray-500">{product.category ?? '—'}</td>
-                <td className="px-4 py-3 text-gray-700 font-medium">
+                <td className="px-4 py-3 text-gray-500">{product.quantity ?? '—'}</td>
+                {/* <td className="px-4 py-3 text-gray-700 font-medium">
                   {product.price != null
                     ? `GH₵${Number(product.price).toLocaleString('en-GH', { minimumFractionDigits: 2 })}`
                     : '—'}
-                </td>
+                </td> */}
                 <td className="px-6 py-3 text-right">
                   <span
                     className={`inline-block px-2.5 py-1 rounded-full text-xs font-bold ${
