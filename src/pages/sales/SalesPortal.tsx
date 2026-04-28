@@ -37,8 +37,10 @@ const SalesPortal: React.FC<SalesPortalProps> = ({ type }) => {
 
   const [completedTransaction, setCompletedTransaction] = useState<Transaction | null>(null);
 
+  const isWholesale = type === 'wholesale';
+
   const getPrice = (product: Product) =>
-    type === 'wholesale' ? product.wholesalePrice : product.retailPrice;
+    isWholesale ? product.wholesalePrice : product.retailPrice;
 
   const calculateTotal = () =>
     cart.reduce((sum, item) => sum + item.totalAmount, 0);
@@ -184,6 +186,7 @@ const SalesPortal: React.FC<SalesPortalProps> = ({ type }) => {
     }
   };
 
+  // ── Welcome view ───────────────────────────────────────────────────────────
   if (view === 'welcome') {
     return (
       <WelcomeScreen
@@ -195,6 +198,7 @@ const SalesPortal: React.FC<SalesPortalProps> = ({ type }) => {
     );
   }
 
+  // ── Completed view ─────────────────────────────────────────────────────────
   if (view === 'completed' && completedTransaction) {
     return (
       <CompletedScreen
@@ -206,16 +210,12 @@ const SalesPortal: React.FC<SalesPortalProps> = ({ type }) => {
     );
   }
 
-  const isWholesale     = type === 'wholesale';
-  const headerGradient  = isWholesale ? 'from-blue-700 to-blue-600'  : 'from-green-700 to-green-600';
-  const accentFocus     = isWholesale ? 'focus:border-blue-400'       : 'focus:border-green-400';
-  const accentText      = isWholesale ? 'text-blue-600'               : 'text-green-600';
-  const accentBorder    = isWholesale ? 'border-blue-200'             : 'border-green-200';
-  const accentInputRing = isWholesale ? 'focus:ring-blue-100'         : 'focus:ring-green-100';
+  const accentFocus     = isWholesale ? 'focus:border-blue-400'  : 'focus:border-green-400';
+  const accentInputRing = isWholesale ? 'focus:ring-blue-100'    : 'focus:ring-green-100';
 
+  // ── Sale view ──────────────────────────────────────────────────────────────
   return (
-    // ── Full-screen shell — white background, fixed height so panels scroll independently
-    <div className="h-screen flex flex-col bg-gray-50 overflow-hidden">
+    <div className="h-screen flex flex-col overflow-hidden">
 
       <ConfirmSaleModal
         open={showConfirm}
@@ -228,110 +228,116 @@ const SalesPortal: React.FC<SalesPortalProps> = ({ type }) => {
         onCancel={() => setShowConfirm(false)}
       />
 
-      {/* ── Header ─────────────────────────────────────────────────────── */}
-      <header className={`bg-gradient-to-r ${headerGradient} shrink-0 px-6 py-3 shadow-md z-40`}>
-        <div className="max-w-screen-2xl mx-auto flex items-center justify-between">
+      {/* ── Header ── */}
+      <header className="sticky top-0 z-20 bg-white border-b border-gray-200 px-6 py-3
+        flex items-center flex-shrink-0 shadow-sm">
+        <div className="max-w-screen-2xl mx-auto w-full flex items-center justify-between">
+
+          {/* Left — brand */}
           <div className="flex items-center gap-3">
-            <Dumbbell className="w-5 h-5 text-white/90" />
+            <div className="bg-orange-500 p-1.5 rounded-lg">
+              <Dumbbell className="w-4 h-4 text-white" />
+            </div>
             <div>
-              <h1 className="text-sm font-black text-white tracking-widest uppercase">
+              <h1 className="text-sm font-black text-gray-900 tracking-widest uppercase">
                 Muscle Matrix
               </h1>
-              <p className="text-white/60 text-xs tracking-wide">
+              <p className="text-gray-400 text-xs tracking-wide">
                 {isWholesale ? 'Wholesale' : 'Retail'} Point of Sale
               </p>
             </div>
           </div>
 
+          {/* Right — user + exit */}
           <div className="flex items-center gap-5">
             <div className="hidden sm:block text-right">
-              <p className="text-white/50 text-xs uppercase tracking-widest">Logged in as</p>
-              <p className="text-white font-semibold text-sm">{user?.username}</p>
+              <p className="text-gray-400 text-xs uppercase tracking-widest">Logged in as</p>
+              <p className="text-gray-900 font-semibold text-sm">{user?.username}</p>
             </div>
             <button
               onClick={() => { resetSaleForm(); setView('welcome'); }}
-              className="flex items-center gap-1.5 px-3 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors text-sm font-medium"
+              className="flex items-center gap-1.5 px-3 py-2 bg-gray-100 hover:bg-gray-200
+                text-gray-700 rounded-lg transition-colors text-sm font-medium"
             >
               <X className="w-4 h-4" />
               Exit
             </button>
           </div>
+
         </div>
       </header>
 
-      {/* ── Error banner ────────────────────────────────────────────────── */}
+      {/* ── Error banner ── */}
       {error && (
         <div className="shrink-0 px-6 pt-3 max-w-screen-2xl mx-auto w-full">
           <ErrorBanner message={error} onDismiss={() => setError('')} />
         </div>
       )}
 
-      {/* ── Body — two columns, each scrolls independently ──────────────── */}
-<div className="flex-1 overflow-hidden max-w-screen-2xl mx-auto w-full px-4 sm:px-6 py-4">
-  <div className="h-full grid grid-cols-1 lg:grid-cols-12 gap-4">
+      {/* ── Body ── */}
+      <div className="flex-1 overflow-hidden max-w-screen-2xl mx-auto w-full px-4 sm:px-6 py-4">
+        <div className="h-full grid grid-cols-1 lg:grid-cols-12 gap-4">
 
-    {/* ── LEFT: Products (dominant) ────────────────────────────────── */}
-    <div className="lg:col-span-7 h-full overflow-hidden">
-      <ProductSearch
-        type={type}
-        onAddToCart={handleAddToCart}
-        error={cartAddError}
-        onClearError={() => setCartAddError('')}
-      />
-    </div>
+          {/* Left — product search */}
+          <div className="lg:col-span-7 h-full overflow-hidden">
+            <ProductSearch
+              type={type}
+              onAddToCart={handleAddToCart}
+              error={cartAddError}
+              onClearError={() => setCartAddError('')}
+            />
+          </div>
 
-    {/* ── RIGHT: Cart + Customer + Checkout ───────────────────────── */}
-    <div className="lg:col-span-5 flex flex-col gap-3 h-full overflow-hidden">
+          {/* Right — cart + checkout */}
+          <div className="lg:col-span-5 flex flex-col gap-3 h-full overflow-hidden">
 
-      {/* Cart — takes all remaining space, scrolls inside */}
-      <div className="flex-1 overflow-hidden">
-        <CartPanel
-          cart={cart}
-          type={type}
-          onUpdateQuantity={handleUpdateQuantity}
-          onSetQuantity={handleSetQuantity}
-          onRemove={handleRemoveItem}
-        />
-      </div>
+            <div className="flex-1 overflow-hidden">
+              <CartPanel
+                cart={cart}
+                type={type}
+                onUpdateQuantity={handleUpdateQuantity}
+                onSetQuantity={handleSetQuantity}
+                onRemove={handleRemoveItem}
+              />
+            </div>
 
-      {/* Customer name + Checkout — compact, pinned at bottom */}
-      <div className="shrink-0 bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+            <div className="shrink-0 bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
 
-        {/* Customer name row */}
-        <div className="px-4 pt-4 pb-3 border-b border-gray-100">
-          <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5">
-            Customer Name <span className="text-red-400">*</span>
-          </label>
-          <input
-            type="text"
-            value={customerName}
-            onChange={(e) => setCustomerName(e.target.value)}
-            placeholder="Enter customer name"
-            className={`w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-800 placeholder-gray-400 text-sm focus:outline-none focus:bg-white focus:ring-2 ${accentInputRing} ${accentFocus} transition-all`}
-          />
-        </div>
+              {/* Customer name */}
+              <div className="px-4 pt-4 pb-3 border-b border-gray-100">
+                <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5">
+                  Customer Name <span className="text-red-400">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={customerName}
+                  onChange={(e) => setCustomerName(e.target.value)}
+                  placeholder="Enter customer name"
+                  className={`w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg
+                    text-gray-800 placeholder-gray-400 text-sm focus:outline-none focus:bg-white
+                    focus:ring-2 ${accentInputRing} ${accentFocus} transition-all`}
+                />
+              </div>
 
-        {/* Checkout panel — no outer card, sits inside this card */}
-        <CheckoutPanel
-          type={type}
-          employeeUsername={user?.username ?? ''}
-          employeeSignature={employeeSignature}
-          customerSignature={customerSignature}
-          total={calculateTotal()}
-          cartEmpty={cart.length === 0}
-          onEmployeeSignatureChange={setEmployeeSignature}
-          onCustomerSignatureChange={setCustomerSignature}
-          onCompleteSale={handleCompleteSale}
-        />
-      </div>
+              {/* Checkout */}
+              <CheckoutPanel
+                type={type}
+                employeeUsername={user?.username ?? ''}
+                employeeSignature={employeeSignature}
+                customerSignature={customerSignature}
+                total={calculateTotal()}
+                cartEmpty={cart.length === 0}
+                onEmployeeSignatureChange={setEmployeeSignature}
+                onCustomerSignatureChange={setCustomerSignature}
+                onCompleteSale={handleCompleteSale}
+              />
+            </div>
 
-    </div>
-  </div>
-
-
+          </div>
         </div>
       </div>
-    
+
+    </div>
   );
 };
 

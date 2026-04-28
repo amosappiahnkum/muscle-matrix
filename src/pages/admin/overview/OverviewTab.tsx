@@ -4,7 +4,6 @@ import { getProducts, getLowStockProducts, getDailySalesReport } from '@/api/api
 import { Product } from '@/types';
 import StatsCards    from './StatsCards';
 import LowStockAlert from './LowStockAlert';
-import QuickActions  from './QuickActions';
 import SalesBarChart from './SalesBarChart';
 import GymHeroBanner from './GymHeroBanner';
 import { TabType }   from '../AdminDashboard';
@@ -94,11 +93,11 @@ const OverviewTab: React.FC<OverviewTabProps> = ({ onNavigate }) => {
         </div>
       </div>
 
-      <SalesBarChart />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <SalesBarChart />
+
         <LowStockAlert products={lowStockProducts} />
-        <QuickActions onNavigate={onNavigate} />
       </div>
 
     </div>

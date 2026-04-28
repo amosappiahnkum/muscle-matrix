@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { UserPlus } from 'lucide-react';
+import { UserPlus, Users } from 'lucide-react';
 import { User } from '@/types';
 import { getUsers, saveUser, deleteUser } from '@/api/api';
-import { SuccessBanner } from '../../../components/common/Banner';
-import Button from '../../../components/common/Button';
+import { SuccessBanner } from '@/components/common/Banner';
+import Button from '@/components/common/Button';
+import PageLayout from '@/components/admin-layouts/PageLayouts';
 
-import { EmployeeTable }  from './components/EmployeeTable';
-import { EmployeeForm, FormData }   from './components/EmployeeForm';
-import { DeleteConfirm }  from './components/DeleteConfirm';
+import { EmployeeTable } from './components/EmployeeTable';
+import { EmployeeForm, FormData } from './components/EmployeeForm';
+import { DeleteConfirm } from './components/DeleteConfirm';
 
 const EmployeeManagement: React.FC = () => {
   const [employees,     setEmployees]     = useState<User[]>([]);
@@ -39,7 +40,7 @@ const EmployeeManagement: React.FC = () => {
 
   useEffect(() => { load(); }, [load]);
 
-  // ── Form submit ─────────────────────────────────────────────────────────────
+  // ── Form submit ──────────────────────────────────────────────────────────────
   const handleSubmit = async (form: FormData) => {
     setFormError('');
 
@@ -72,7 +73,7 @@ const EmployeeManagement: React.FC = () => {
     }
   };
 
-  // ── Delete ──────────────────────────────────────────────────────────────────
+  // ── Delete ───────────────────────────────────────────────────────────────────
   const handleDelete = async () => {
     if (!deleteTarget) return;
     setDeleteLoading(true);
@@ -92,17 +93,24 @@ const EmployeeManagement: React.FC = () => {
   const openAdd  = ()           => { setEditingUser(null); setFormError(''); setFormOpen(true); };
 
   return (
-    <div className="space-y-6">
-
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <h3 className="text-xl font-bold text-white">Employee Management</h3>
-        <Button variant="primary" color="orange" icon={<UserPlus className="w-5 h-5" />} onClick={openAdd}>
+    <PageLayout
+      title="Employee Management"
+      subtitle="Manage your staff accounts and roles"
+      icon={<Users size={16} className="text-orange-500" />}
+      actions={
+        <Button
+          variant="primary"
+          color="orange"
+          icon={<UserPlus className="w-5 h-5" />}
+          onClick={openAdd}
+        >
           Add Employee
         </Button>
-      </div>
-
-      {success && <SuccessBanner message={success} onDismiss={() => setSuccess('')} />}
+      }
+    >
+      {success && (
+        <SuccessBanner message={success} onDismiss={() => setSuccess('')} />
+      )}
 
       <EmployeeTable
         employees={employees}
@@ -127,7 +135,7 @@ const EmployeeManagement: React.FC = () => {
         onConfirm={handleDelete}
         onCancel={() => setDeleteTarget(null)}
       />
-    </div>
+    </PageLayout>
   );
 };
 

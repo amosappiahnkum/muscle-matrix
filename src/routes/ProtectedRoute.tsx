@@ -9,16 +9,25 @@ interface ProtectedRouteProps {
 }
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requiredRole }) => {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, appLoading } = useAuth();
   const location = useLocation();
 
+  // Wait for session restore before making any redirect decision
+  if (appLoading) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="w-6 h-6 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
   if (!isAuthenticated || !user) {
-    return <Navigate to={`/login/${requiredRole}`} state={{ from: location }} replace />;
+    return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
   // Admin can access every portal
   if (user.role !== requiredRole && user.role !== 'admin') {
-    return <Navigate to={`/login/${requiredRole}`} replace />;
+    return <Navigate to="/login" replace />;
   }
 
   return <>{children}</>;

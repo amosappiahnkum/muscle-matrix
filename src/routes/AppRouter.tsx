@@ -10,10 +10,9 @@ import Login              from '../pages/auth/Login';
 import AdminDashboard     from '../pages/admin/AdminDashboard';
 import SalesPortal        from '../pages/sales/SalesPortal';
 
-// Admin tab pages
 import OverviewTab            from '../pages/admin/overview/OverviewTab';
 import EmployeeManagement     from '../pages/admin/employees/index';
-import ProductManagement      from '../pages/admin/ProductManagement';
+import ProductManagement      from '../pages/products';
 import InventoryLog           from '../pages/admin/inventory/index';
 import SalesReport            from '../pages/admin/salesReport/index';
 import TransactionHistory     from '../pages/admin/transactions/index';
@@ -37,7 +36,7 @@ const AppRouter: React.FC = () => (
 
         {/* ── Auth ─────────────────────────────────────────────────── */}
         <Route
-          path="/login/:role"
+          path="/login"
           element={
             <GuestRoute>
               <Login />
@@ -45,7 +44,6 @@ const AppRouter: React.FC = () => (
           }
         />
 
-        {/* ── Admin — nested under /admin ───────────────────────────── */}
         <Route path="/admin" element={<AdminRoute><OverviewTab /></AdminRoute>} />
         <Route path="/admin/employees"   element={<AdminRoute><EmployeeManagement /></AdminRoute>} />
         <Route path="/admin/products"    element={<AdminRoute><ProductManagement /></AdminRoute>} />
@@ -73,7 +71,6 @@ const AppRouter: React.FC = () => (
           }
         />
 
-        {/* ── Catch-all ────────────────────────────────────────────── */}
         <Route path="*" element={<Navigate to="/" replace />} />
 
       </Routes>

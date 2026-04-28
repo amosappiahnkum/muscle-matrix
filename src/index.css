@@ -2,12 +2,7 @@
 
 
 
-/* ═══════════════════════════════════════════════════════════
-   COLOR LIBRARY
-   CSS variables mirror Tailwind's default palette.
-   Use Tailwind for layout/responsive; use these vars only
-   for dynamic class suffixes Tailwind can't safely generate.
-═══════════════════════════════════════════════════════════ */
+
 :root {
   /* Brand */
   --orange:        #f97316;

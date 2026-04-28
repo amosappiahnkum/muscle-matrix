@@ -38,9 +38,9 @@ export interface Product {
   id:             string;
   name:           string;
   quantity:       number;
-  expiryDate:     string | null;   // camelCase to match toFrontendArray()
-  isExpired:      boolean;         // computed by backend model
-  isExpiringSoon: boolean;         // computed by backend model
+  expiryDate:     string | null;   
+  isExpired:      boolean;        
+  isExpiringSoon: boolean;         
   wholesalePrice: number;
   retailPrice:    number;
   createdAt:      string;
@@ -77,12 +77,12 @@ export interface RestockPayload {
   productId:    string;
   quantity:     number;
   note?:        string;
-  expiry_date?: string | null;   // optional — updates the product's expiry on restock
+  expiry_date?: string | null;   
 }
 
 export interface AdjustPayload {
   productId:    string;
-  quantity:     number;          // positive or negative
+  quantity:     number;          
   note?:        string;
   expiry_date?: string | null;
 }

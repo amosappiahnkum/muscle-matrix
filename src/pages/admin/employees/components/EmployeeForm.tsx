@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { UserPlus, Edit3, Users, ShieldCheck, Dumbbell } from 'lucide-react';
 import { UserRole } from '@/types';
 import Modal from '@/components/common/Modal';
 import { ErrorBanner } from '@/components/common/Banner';
@@ -23,7 +24,54 @@ interface EmployeeFormProps {
 }
 
 const inputClass =
-  'w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-orange-500 transition-colors disabled:opacity-50';
+  'w-full px-4 py-3 bg-white border border-gray-200 rounded-lg text-gray-800 placeholder-gray-400 focus:outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 transition-colors disabled:opacity-50 disabled:bg-gray-50';
+
+const labelClass = 'block text-gray-600 text-sm font-medium mb-2';
+
+// ── Aside panel content ──────────────────────────────────────────────────────
+const FormAside = ({ editing }: { editing: User | null }) => (
+  <div className="flex flex-col h-full gap-6">
+    {/* Icon */}
+    <div className="bg-white/20 rounded-2xl p-4 w-fit">
+      {editing
+        ? <Edit3 className="w-8 h-8 text-white" />
+        : <UserPlus className="w-8 h-8 text-white" />
+      }
+    </div>
+
+    {/* Title block */}
+    <div>
+      <p className="text-white/60 text-xs font-semibold tracking-widest uppercase mb-1">
+        Muscle Matrix
+      </p>
+      <h3 className="text-white text-2xl font-black leading-tight" style={{ fontFamily: 'Georgia, serif' }}>
+        {editing ? 'Edit\nEmployee' : 'Add New\nEmployee'}
+      </h3>
+      <p className="text-white/70 text-sm mt-2 leading-relaxed">
+        {editing ? 'Update the employees credentials or role below.': 'Fill in the details to create a new staff account.'}
+      </p>
+    </div>
+
+    {/* Role legend */}
+    <div className="mt-auto space-y-3">
+      <p className="text-white/50 text-xs font-semibold tracking-wider uppercase">Roles</p>
+      <div className="flex items-center gap-2 text-white/80 text-sm">
+        <ShieldCheck className="w-4 h-4 text-white/60 flex-shrink-0" />
+        <span><span className="font-semibold text-white">Wholesale</span> — bulk pricing</span>
+      </div>
+      <div className="flex items-center gap-2 text-white/80 text-sm">
+        <Dumbbell className="w-4 h-4 text-white/60 flex-shrink-0" />
+        <span><span className="font-semibold text-white">Retail</span> — standard pricing</span>
+      </div>
+    </div>
+
+    {/* Footer */}
+    <div className="flex items-center gap-2 text-white/40 text-xs mt-2">
+      <Users className="w-3.5 h-3.5" />
+      Staff portal
+    </div>
+  </div>
+);
 
 export const EmployeeForm: React.FC<EmployeeFormProps> = ({
   open, editing, loading, error, onClose, onSubmit,
@@ -46,13 +94,15 @@ export const EmployeeForm: React.FC<EmployeeFormProps> = ({
       open={open}
       onClose={onClose}
       title={editing ? 'Edit Employee' : 'Add New Employee'}
+      subtitle="Fill in the fields below and save"
       persistent={loading}
+      aside={<FormAside editing={editing} />}
     >
       <div className="space-y-4">
         {error && <ErrorBanner message={error} />}
 
         <div>
-          <label className="block text-gray-300 text-sm font-medium mb-2">Username</label>
+          <label className={labelClass}>Username</label>
           <input
             type="text"
             value={form.username}
@@ -64,10 +114,10 @@ export const EmployeeForm: React.FC<EmployeeFormProps> = ({
         </div>
 
         <div>
-          <label className="block text-gray-300 text-sm font-medium mb-2">
+          <label className={labelClass}>
             Password{' '}
             {editing && (
-              <span className="text-gray-500 font-normal">(leave blank to keep current)</span>
+              <span className="text-gray-400 font-normal">(leave blank to keep current)</span>
             )}
           </label>
           <input
@@ -81,7 +131,7 @@ export const EmployeeForm: React.FC<EmployeeFormProps> = ({
         </div>
 
         <div>
-          <label className="block text-gray-300 text-sm font-medium mb-2">Role</label>
+          <label className={labelClass}>Role</label>
           <select
             value={form.role}
             onChange={set('role')}

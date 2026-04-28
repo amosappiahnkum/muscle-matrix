@@ -17,7 +17,7 @@ export const EmployeeTable: React.FC<EmployeeTableProps> = ({
     {
       key: 'username',
       header: 'Username',
-      render: (u) => <span className="text-white font-medium">{u.username}</span>,
+      render: (u) => <span className="font-medium text-gray-800">{u.username}</span>,
     },
     {
       key: 'role',
@@ -25,8 +25,8 @@ export const EmployeeTable: React.FC<EmployeeTableProps> = ({
       render: (u) => (
         <span className={`px-3 py-1 rounded-full text-xs font-semibold capitalize ${
           u.role === 'wholesale'
-            ? 'bg-blue-500/20 text-blue-400'
-            : 'bg-green-500/20 text-green-400'
+            ? 'bg-blue-50 text-blue-600 border border-blue-100'
+            : 'bg-green-50 text-green-600 border border-green-100'
         }`}>
           {u.role}
         </span>
@@ -49,14 +49,14 @@ export const EmployeeTable: React.FC<EmployeeTableProps> = ({
         <div className="flex justify-end gap-2">
           <button
             onClick={() => onEdit(u)}
-            className="p-2 bg-blue-500/20 text-blue-400 rounded-lg hover:bg-blue-500/30 transition-colors"
+            className="p-2 bg-blue-50 text-blue-500 rounded-lg hover:bg-blue-100 transition-colors border border-blue-100"
             title="Edit"
           >
             <Edit2 className="w-4 h-4" />
           </button>
           <button
             onClick={() => onDelete(u)}
-            className="p-2 bg-red-500/20 text-red-400 rounded-lg hover:bg-red-500/30 transition-colors"
+            className="p-2 bg-red-50 text-red-500 rounded-lg hover:bg-red-100 transition-colors border border-red-100"
             title="Delete"
           >
             <Trash2 className="w-4 h-4" />
@@ -67,7 +67,7 @@ export const EmployeeTable: React.FC<EmployeeTableProps> = ({
   ];
 
   return (
-    <div className="bg-gray-800/50 rounded-xl border border-gray-700 overflow-hidden">
+    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
       <DataTable
         columns={columns}
         data={employees}

@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Package, Plus, Search } from 'lucide-react';
 import { Product } from '@/types';
-import { getProducts } from '@/api/api.ts';
-import DataTable, { Column } from '../../components/common/DataTable.tsx';
+import { getProducts } from '@/api/api';
+import DataTable, { Column } from '../../components/common/DataTable';
 
 interface ProductSearchProps {
   type: 'wholesale' | 'retail';
@@ -114,19 +114,19 @@ const ProductSearch: React.FC<ProductSearchProps> = ({
         const outOfStock = product.quantity === 0;
         return (
           <button
-            onClick={() => handleAdd(product)}
-            disabled={outOfStock}
-            title={outOfStock ? 'Out of stock' : `Add ${product.name} to cart`}
-            className={`
-              w-7 h-7 rounded-lg flex items-center justify-center mx-auto transition-all duration-150
-              ${outOfStock
-                ? 'bg-gray-100 text-gray-300 cursor-not-allowed'
-                : `${accentBtn} text-white shadow-sm hover:shadow active:scale-90`
-              }
-            `}
-          >
-            <Plus className="w-3.5 h-3.5" />
-          </button>
+  onClick={() => handleAdd(product)}
+  disabled={outOfStock}
+  title={outOfStock ? 'Out of stock' : `Add ${product.name} to cart`}
+  className={`
+    w-7 h-7 rounded-lg flex items-center justify-center mx-auto transition-all duration-150
+    ${outOfStock
+      ? 'bg-gray-100 text-gray-300 cursor-not-allowed'
+      : 'bg-orange-500 hover:bg-orange-600 text-white shadow-sm hover:shadow active:scale-90'
+    }
+  `}
+>
+  <Plus className="w-3.5 h-3.5" />
+</button>
         );
       },
     },
