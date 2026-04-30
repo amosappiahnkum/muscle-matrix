@@ -33,15 +33,16 @@ export const printReceipt = (transaction: Transaction): void => {
           margin: 0 auto;
           padding: 20px;
           color: #111;
+          font-size: 14px;
         }
         .header { text-align: center; border-bottom: 2px solid #333; padding-bottom: 15px; margin-bottom: 15px; }
-        .header h1 { font-size: 20px; font-weight: 900; letter-spacing: 2px; }
-        .header p { font-size: 11px; color: #555; margin-top: 4px; }
+        .header h1 { font-size: 24px; font-weight: 900; letter-spacing: 2px; }
+        .header p { font-size: 13px; color: #555; margin-top: 4px; }
         .badge {
           display: inline-block;
           padding: 3px 12px;
           border-radius: 20px;
-          font-size: 11px;
+          font-size: 13px;
           font-weight: bold;
           margin-top: 8px;
           text-transform: uppercase;
@@ -49,18 +50,18 @@ export const printReceipt = (transaction: Transaction): void => {
         }
         .wholesale { background: #3B82F6; color: #fff; }
         .retail    { background: #22C55E; color: #fff; }
-        .info { margin-bottom: 12px; font-size: 12px; }
-        .info-row { display: flex; justify-content: space-between; margin: 4px 0; }
+        .info { margin-bottom: 12px; font-size: 14px; }
+        .info-row { display: flex; justify-content: space-between; margin: 5px 0; }
         .info-row span:last-child { font-weight: 600; }
-        table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 11px; }
-        th { background: #f0f0f0; padding: 6px 4px; text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
-        td { padding: 7px 4px; border-bottom: 1px solid #eee; }
-        .total { font-size: 18px; font-weight: 900; text-align: right; margin-top: 12px; padding-top: 12px; border-top: 2px solid #333; }
-        .signatures { display: flex; justify-content: space-between; margin-top: 40px; font-size: 11px; }
+        table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 13px; }
+        th { background: #f0f0f0; padding: 7px 4px; text-align: left; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+        td { padding: 8px 4px; border-bottom: 1px solid #eee; }
+        .total { font-size: 20px; font-weight: 900; text-align: right; margin-top: 12px; padding-top: 12px; border-top: 2px solid #333; }
+        .signatures { display: flex; justify-content: space-between; margin-top: 40px; font-size: 13px; }
         .sig { text-align: center; width: 45%; }
         .sig-line { border-top: 1px solid #333; padding-top: 5px; margin-top: 36px; font-weight: 600; }
         .sig-name { font-style: italic; color: #555; margin-top: 3px; }
-        .footer { text-align: center; margin-top: 36px; font-size: 10px; color: #888; border-top: 1px dashed #ccc; padding-top: 12px; line-height: 1.6; }
+        .footer { text-align: center; margin-top: 36px; font-size: 12px; color: #888; border-top: 1px dashed #ccc; padding-top: 12px; line-height: 1.6; }
         @media print {
           body { padding: 0; }
           @page { margin: 10mm; }
