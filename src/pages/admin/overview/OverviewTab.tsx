@@ -5,7 +5,6 @@ import { Product } from '@/types';
 import StatsCards    from './StatsCards';
 import LowStockAlert from './LowStockAlert';
 import SalesBarChart from './SalesBarChart';
-import GymHeroBanner from './GymHeroBanner';
 import { TabType }   from '../AdminDashboard';
 
 interface OverviewTabProps {
@@ -79,10 +78,9 @@ const OverviewTab: React.FC<OverviewTabProps> = ({ onNavigate }) => {
 
       {/* Banner + overlapping stat cards */}
       <div className="relative">
-        <GymHeroBanner storeName="Muscle Matrix" />
 
         {/* Cards pulled up to sit on the banner's bottom edge */}
-        <div className="relative -mt-10 z-10 px-4">
+        <div className="relative  z-10 px-4">
           <StatsCards
             totalProducts={stats.totalProducts}
             todaySales={stats.todaySales}
