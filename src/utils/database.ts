@@ -1,6 +1,3 @@
-// Database utilities using localStorage for offline storage
-// Simulates SQLite functionality in browser environment
-
 import { User, Product, Transaction, UserRole } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -10,7 +7,7 @@ const DB_KEYS = {
   TRANSACTIONS: 'muscle_matrix_transactions',
 };
 
-// Initialize default admin if not exists
+// Initialize default admin-layouts if not exists
 export const initializeDatabase = () => {
   const users = getUsers();
   if (!users.find(u => u.role === 'admin')) {

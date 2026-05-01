@@ -1,73 +1,125 @@
-// Authentication Context for managing user sessions — MUSCLE MATRIX
+import React, {
+  createContext, useContext, useState, useEffect,
+  useRef, useCallback, ReactNode,
+} from 'react';
+import { AuthState, LoginResult, UserRole } from '../types';
+import { authenticateUser, restoreSession, logout as apiLogout } from '../api/api';
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { AuthState, UserRole } from '@/types';
-import { authenticateUser, initializeDatabase } from '../utils/database';
-
-const SESSION_KEY = 'muscle_matrix_session';
+const INACTIVITY_LIMIT_MS = 60 * 60 * 1000;
+const WARNING_BEFORE_MS   =  5 * 60 * 1000;
+const TICK_INTERVAL_MS    = 10 * 1000;
 
 interface AuthContextType extends AuthState {
-  login: (username: string, password: string, expectedRole?: UserRole) => { success: boolean; message: string };
-  logout: () => void;
-  checkAccess: (requiredRole: UserRole) => boolean;
-  refreshSession: (updatedUser: import('../types').User) => void;
+  login:            (username: string, password: string, expectedRole?: UserRole) => Promise<LoginResult>;
+  logout:           () => Promise<void>;
+  extendSession:    () => void;
+  checkAccess:      (requiredRole: UserRole) => boolean;
+  refreshSession:   (updatedUser: import('../types').User) => void;
+  secondsRemaining: number | null;
+  showWarning:      boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [authState, setAuthState] = useState<AuthState>({
-    isAuthenticated: false,
-    user: null,
-  });
+  const [authState,        setAuthState]        = useState<AuthState>({ isAuthenticated: false, user: null });
+  const [appLoading,       setAppLoading]       = useState(true);
+  const [showWarning,      setShowWarning]      = useState(false);
+  const [secondsRemaining, setSecondsRemaining] = useState<number | null>(null);
 
-  useEffect(() => {
-    // Initialize database with default admin on first run
-    initializeDatabase();
+  const lastActivityRef = useRef<number>(Date.now());
+  const tickRef         = useRef<ReturnType<typeof setInterval> | null>(null);
 
-    // Restore existing session from localStorage
-    const savedSession = localStorage.getItem(SESSION_KEY);
-    if (savedSession) {
-      try {
-        const session = JSON.parse(savedSession);
-        setAuthState({ isAuthenticated: true, user: session });
-      } catch {
-        localStorage.removeItem(SESSION_KEY);
-      }
-    }
+  // ── Logout ──────────────────────────────────────────────────────────────────
+  const logout = useCallback(async () => {
+    if (tickRef.current) { clearInterval(tickRef.current); tickRef.current = null; }
+    setShowWarning(false);
+    setSecondsRemaining(null);
+    await apiLogout();
+    setAuthState({ isAuthenticated: false, user: null });
   }, []);
 
-  const login = (username: string, password: string, expectedRole?: UserRole) => {
-    const user = authenticateUser(username, password);
+  // ── Extend session ─────────────────────────────────────────────────────────
+  const extendSession = useCallback(() => {
+    lastActivityRef.current = Date.now();
+    setShowWarning(false);
+    setSecondsRemaining(null);
+  }, []);
 
-    if (!user) {
-      return { success: false, message: 'Invalid username or password. Please try again.' };
-    }
+  // ── Record activity ────────────────────────────────────────────────────────
+  const recordActivity = useCallback(() => {
+    lastActivityRef.current = Date.now();
+    if (showWarning) { setShowWarning(false); setSecondsRemaining(null); }
+  }, [showWarning]);
 
-    // Role-based access control
-    if (expectedRole && user.role !== 'admin') {
-      if (expectedRole === 'wholesale' && user.role !== 'wholesale') {
+  // ── Ticker ─────────────────────────────────────────────────────────────────
+  const startTicker = useCallback(() => {
+    if (tickRef.current) clearInterval(tickRef.current);
+    tickRef.current = setInterval(() => {
+      const idle      = Date.now() - lastActivityRef.current;
+      const remaining = INACTIVITY_LIMIT_MS - idle;
+      if (remaining <= 0) { logout(); return; }
+      if (remaining <= WARNING_BEFORE_MS) {
+        setShowWarning(true);
+        setSecondsRemaining(Math.ceil(remaining / 1000));
+      } else {
+        setShowWarning(false);
+        setSecondsRemaining(null);
+      }
+    }, TICK_INTERVAL_MS);
+  }, [logout]);
+
+  // ── Activity listeners ─────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!authState.isAuthenticated) return;
+    const events = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll', 'click'];
+    events.forEach((e) => window.addEventListener(e, recordActivity, { passive: true }));
+    lastActivityRef.current = Date.now();
+    startTicker();
+    return () => {
+      events.forEach((e) => window.removeEventListener(e, recordActivity));
+      if (tickRef.current) clearInterval(tickRef.current);
+    };
+  }, [authState.isAuthenticated, recordActivity, startTicker]);
+
+  // ── Restore session ────────────────────────────────────────────────────────
+  useEffect(() => {
+    restoreSession()
+      .then((user) => { if (user) setAuthState({ isAuthenticated: true, user }); })
+      .catch(() => {})
+      .finally(() => setAppLoading(false));
+  }, []);
+
+  
+  const login = async (
+    username: string,
+    password: string,
+    expectedRole?: UserRole,
+  ): Promise<LoginResult> => {
+    try {
+      // const user = await authenticateUser(username, password);
+       const user = await authenticateUser(username, password, expectedRole);
+      if (expectedRole && user.role !== expectedRole && user.role !== 'admin') {
+        await apiLogout();
         return {
           success: false,
-          message: 'Access denied. Your account is not authorized for the Wholesale Portal.',
+          message: `Access denied. This portal is for ${expectedRole} users only.`,
         };
       }
-      if (expectedRole === 'retail' && user.role !== 'retail') {
-        return {
-          success: false,
-          message: 'Access denied. Your account is not authorized for the Retail Portal.',
-        };
-      }
+
+      lastActivityRef.current = Date.now();
+      setAuthState({ isAuthenticated: true, user });
+      return { success: true, message: '' };
+
+    } catch (err: unknown) {
+      // Surface the real error from the API (wrong password, server down, etc.)
+      return {
+        success: false,
+        message: err instanceof Error
+          ? err.message
+          : 'Login failed. Please try again.',
+      };
     }
-
-    setAuthState({ isAuthenticated: true, user });
-    localStorage.setItem(SESSION_KEY, JSON.stringify(user));
-    return { success: true, message: 'Login successful' };
-  };
-
-  const logout = () => {
-    setAuthState({ isAuthenticated: false, user: null });
-    localStorage.removeItem(SESSION_KEY);
   };
 
   const checkAccess = (requiredRole: UserRole): boolean => {
@@ -76,17 +128,28 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return authState.user.role === requiredRole;
   };
 
-  /**
-   * Called after admin updates their own credentials so the session stays in sync
-   * without forcing a logout.
-   */
-  const refreshSession = (updatedUser: import('../types').User) => {
+  const refreshSession = (updatedUser: import('../types').User) =>
     setAuthState({ isAuthenticated: true, user: updatedUser });
-    localStorage.setItem(SESSION_KEY, JSON.stringify(updatedUser));
-  };
+
+  if (appLoading) {
+    return (
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <div className="flex items-center gap-3 text-gray-400">
+          <svg className="animate-spin w-6 h-6" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+          </svg>
+          <span className="text-sm">Loading…</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <AuthContext.Provider value={{ ...authState, login, logout, checkAccess, refreshSession }}>
+    <AuthContext.Provider value={{
+      ...authState, login, logout, extendSession,
+      checkAccess, refreshSession, secondsRemaining, showWarning,
+    }}>
       {children}
     </AuthContext.Provider>
   );
@@ -94,8 +157,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
 export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
+  if (!context) throw new Error('useAuth must be used within an AuthProvider');
   return context;
 };
