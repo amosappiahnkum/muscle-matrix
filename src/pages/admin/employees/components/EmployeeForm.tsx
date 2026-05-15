@@ -144,13 +144,13 @@ export const EmployeeForm: React.FC<EmployeeFormProps> = ({
         </div>
 
         <div className="flex gap-3 pt-2">
-          <Button variant="secondary" size="lg" fullWidth onClick={onClose} disabled={loading}>
+          <Button variant="secondary" size="md" fullWidth onClick={onClose} disabled={loading}>
             Cancel
           </Button>
           <Button
             variant="primary"
             color="orange"
-            size="lg"
+            size="md"
             fullWidth
             loading={loading}
             onClick={() => onSubmit(form)}

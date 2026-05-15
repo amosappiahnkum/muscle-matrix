@@ -10,6 +10,7 @@ export type TabType =
   | 'employees'
   | 'products'
   | 'inventory'
+  | 'expenses'
   | 'reports'
   | 'transactions'
   | 'backup'
@@ -21,6 +22,7 @@ const routeToTab: Record<string, TabType> = {
   '/admin/employees':   'employees',
   '/admin/products':    'products',
   '/admin/inventory':   'inventory',
+  '/admin/expenses':    'expenses',
   '/admin/reports':     'reports',
   '/admin/transactions':'transactions',
   '/admin/backup':      'backup',
@@ -32,6 +34,7 @@ const tabToRoute: Record<TabType, string> = {
   employees:    '/admin/employees',
   products:     '/admin/products',
   inventory:    '/admin/inventory',
+  expenses:     '/admin/expenses',
   reports:      '/admin/reports',
   transactions: '/admin/transactions',
   backup:       '/admin/backup',

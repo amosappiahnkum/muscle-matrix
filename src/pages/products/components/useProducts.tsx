@@ -47,15 +47,18 @@ export function useProducts(): UseProductsReturn {
     // ── Required field checks ────────────────────────────────────────────────
     if (!form.name.trim())        throw new Error('Product name is required.');
     if (!form.quantity)           throw new Error('Quantity is required.');
+    if (!form.costPrice)          throw new Error('Cost price is required.');
     if (!form.wholesalePrice)     throw new Error('Wholesale price is required.');
     if (!form.retailPrice)        throw new Error('Retail price is required.');
 
     // ── Numeric parsing ──────────────────────────────────────────────────────
     const quantity       = parseInt(form.quantity, 10);
+    const costPrice      = parseFloat(form.costPrice);
     const wholesalePrice = parseFloat(form.wholesalePrice);
     const retailPrice    = parseFloat(form.retailPrice);
 
     if (isNaN(quantity)       || quantity       < 0) throw new Error('Quantity must be a non-negative number.');
+    if (isNaN(costPrice)      || costPrice      < 0) throw new Error('Cost price must be a non-negative number.');
     if (isNaN(wholesalePrice) || wholesalePrice < 0) throw new Error('Wholesale price must be a non-negative number.');
     if (isNaN(retailPrice)    || retailPrice    < 0) throw new Error('Retail price must be a non-negative number.');
 
@@ -82,6 +85,7 @@ export function useProducts(): UseProductsReturn {
     const payload: ProductPayload = {
       name: form.name.trim(),
       quantity,
+      costPrice,
       wholesalePrice,
       retailPrice,
       expiry_date,   // null when not provided — matches ProductPayload.expiry_date?: string | null

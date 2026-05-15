@@ -1,6 +1,7 @@
 import {
   User, Product, InventoryEntry, Transaction,
   DailySalesReport, UserRole, TransactionPayload,
+  Expense, ExpenseBatch, ExpensePayload,
 } from '../types';
 
 // ─── Config ───────────────────────────────────────────────────────────────────
@@ -146,6 +147,11 @@ export const addStock = (payload: {
   productId: string;
   quantity:  number;
   note?:     string;
+  expiry_date?: string;
+  createBatch?: boolean;
+  batchName?: string;
+  unitCost?: number;
+  supplier?: string;
 }): Promise<InventoryEntry> =>
   post<InventoryEntry>('/inventory/restock', payload as Record<string, unknown>);
 
@@ -158,6 +164,27 @@ export const adjustStock = (payload: {
   post<InventoryEntry>('/inventory/adjust', payload as Record<string, unknown>);
 
 // ─── Transactions ─────────────────────────────────────────────────────────────
+
+export const getExpenses = (): Promise<Expense[]> =>
+  get<Expense[]>('/expenses');
+
+export const saveExpense = (expense: ExpensePayload): Promise<Expense> =>
+  post<Expense>('/expenses', expense as unknown as Record<string, unknown>);
+
+export const updateExpense = (
+  id: string,
+  expense: Partial<ExpensePayload>,
+): Promise<Expense> =>
+  put<Expense>(`/expenses/${id}`, expense as Record<string, unknown>);
+
+export const deleteExpense = (id: string): Promise<void> =>
+  del(`/expenses/${id}`);
+
+export const getBatches = (productId?: string): Promise<ExpenseBatch[]> =>
+  get<ExpenseBatch[]>(productId
+    ? `/batches?productId=${encodeURIComponent(productId)}`
+    : '/batches'
+  );
 
 export const getTransactions = (): Promise<Transaction[]> =>
   get<Transaction[]>('/transactions');
