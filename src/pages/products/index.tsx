@@ -100,6 +100,14 @@ const ProductManagement: React.FC = () => {
       render: (p) => <StockBadge qty={p.quantity} />,
     },
     {
+      key: 'costPrice',
+      header: 'Cost (GHâ‚µ)',
+      align: 'right',
+      render: (p) => (
+        <span className="text-gray-700 font-medium">{p.costPrice.toFixed(2)}</span>
+      ),
+    },
+    {
       key: 'wholesalePrice',
       header: 'Wholesale (GH₵)',
       align: 'right',

@@ -41,6 +41,7 @@ export interface Product {
   expiryDate:     string | null;   
   isExpired:      boolean;        
   isExpiringSoon: boolean;         
+  costPrice:      number;
   wholesalePrice: number;
   retailPrice:    number;
   createdAt:      string;
@@ -50,49 +51,134 @@ export interface Product {
 export interface ProductPayload {
   name:           string;
   quantity:       number;
+  costPrice:      number;
   wholesalePrice: number;
   retailPrice:    number;
   expiry_date?:   string | null;   
 }
-
 // ─── Inventory ────────────────────────────────────────────────────────────────
 
-export type InventoryEntryType = 'initial' | 'restock' | 'sale' | 'adjustment';
+export type InventoryEntryType =
+  | 'initial'
+  | 'restock'
+  | 'sale'
+  | 'adjustment';
 
 export interface InventoryEntry {
-  id:             string;
-  productId:      string;
-  productName:    string;
-  type:           InventoryEntryType;
+  id: string;
+  productId: string;
+  productName: string;
+
+  type: InventoryEntryType;
+
   quantityBefore: number;
   quantityChange: number;
-  quantityAfter:  number;
-  transactionId:  string | null;
-  note:           string | null;
-  createdBy:      string | null;
-  createdAt:      string;
+  quantityAfter: number;
+
+  transactionId: string | null;
+  note: string | null;
+  createdBy: string | null;
+  createdAt: string;
+  batchId: string | null;
+  batchCode: string | null;
+  
+  
+}
+
+export interface Batch {
+  id: string;
+
+  batchCode: string;
+
+  description: string;
+
+  productId: string;
+  productName: string | null;
+
+  quantity: number;
+  remainingQuantity: number;
+
+  expiryDate: string | null;
+  supplier: string | null;
+
+  createdAt: string | null;
 }
 
 export interface RestockPayload {
-  productId:    string;
-  quantity:     number;
-  note?:        string;
-  expiry_date?: string | null;   
+  productId: string;
+  quantity: number;
+  note?: string;
+  expiry_date?: string | null;
+
+  createBatch?: boolean;
+  batchDescription?: string;
+  existingBatchId?: string;
+
+  supplier?: string;
 }
 
 export interface AdjustPayload {
-  productId:    string;
-  quantity:     number;          
-  note?:        string;
+  productId: string;
+  quantity: number;
+  note?: string;
   expiry_date?: string | null;
 }
 
 // ─── Sales & Transactions ─────────────────────────────────────────────────────
 
+export type ExpenseType = 'custom' | 'inventory_batch';
+
+export interface ExpenseBatch {
+  id:                string;
+  name:              string | null;
+  productId:         string;
+  productName:       string | null;
+  quantity:          number;
+  remainingQuantity: number;
+  unitCost:          number | null;
+  totalCost:         number | null;
+  expiryDate:        string | null;
+  supplier:          string | null;
+  note:              string | null;
+}
+
+export interface Expense {
+  id:          string;
+  batchId:     string | null;
+  productId:   string | null;
+  productName: string | null;
+  type:        ExpenseType;
+  description: string;
+  amount:      number;
+  category:    string | null;
+  note:        string | null;
+  createdBy:   string | null;
+  batch:       ExpenseBatch | null;
+  createdAt:   string;
+  updatedAt:   string;
+}
+
+export interface ExpensePayload {
+  createBatch?: boolean;
+  batchId?:     string;
+  batchName?:   string | null;
+  productId?:   string;
+  quantity?:    number;
+  unitCost?:    number;
+  expiryDate?:  string | null;
+  supplier?:    string | null;
+  description:  string;
+  amount?:      number;
+  category?:    string | null;
+  note?:        string | null;
+}
+
 export interface SaleItem {
   productId:   string;
   productName: string;
   quantity:    number;
+  costPrice?:  number;
+  totalCost?:  number;
   unitPrice:   number;
   totalAmount: number;
 }

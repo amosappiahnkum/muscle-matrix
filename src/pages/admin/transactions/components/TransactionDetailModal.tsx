@@ -69,6 +69,9 @@ const TransactionDetailModal: React.FC<TransactionDetailModalProps> = ({
                                     <p className="text-white text-sm font-medium">{item.productName}</p>
                                     <p className="text-gray-400 text-xs">
                                         {item.quantity} × GH₵{item.unitPrice.toFixed(2)}
+                                        {item.costPrice !== undefined && (
+                                            <span> | Cost GH₵{item.costPrice.toFixed(2)}</span>
+                                        )}
                                     </p>
                                 </div>
                                 <p className="text-orange-400 font-semibold text-sm">

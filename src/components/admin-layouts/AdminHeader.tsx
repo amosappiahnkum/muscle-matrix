@@ -14,6 +14,7 @@ const tabLabels: Record<TabType, { title: string; subtitle: string }> = {
   employees:    { title: 'Employee Management',        subtitle: 'Manage staff accounts and roles'   },
   products:     { title: 'Product Management',         subtitle: 'Add, edit and manage products'     },
   inventory:    { title: 'Inventory Log',              subtitle: 'Track all stock movements'         },
+  expenses:     { title: 'Expenses',                   subtitle: 'Track custom and batch expenses'   },
   reports:      { title: 'Sales Reports',              subtitle: 'Revenue and performance reports'   },
   transactions: { title: 'Transaction History',        subtitle: 'Full record of all sales'          },
   backup:       { title: 'Backup & Restore',           subtitle: 'Export and import your data'       },

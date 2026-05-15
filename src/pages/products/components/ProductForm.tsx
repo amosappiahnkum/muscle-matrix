@@ -10,6 +10,7 @@ export interface ProductFormData {
   name:           string;
   quantity:       string;
   expiryDate:     string;   
+  costPrice:      string;
   wholesalePrice: string;
   retailPrice:    string;
 }
@@ -18,6 +19,7 @@ export const defaultForm: ProductFormData = {
   name:           '',
   quantity:       '',
   expiryDate:     '',
+  costPrice:      '',
   wholesalePrice: '',
   retailPrice:    '',
 };
@@ -50,6 +52,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
             expiryDate:     editing.expiryDate
                               ? new Date(editing.expiryDate).toISOString().split('T')[0]
                               : '',
+            costPrice:      editing.costPrice.toString(),
             wholesalePrice: editing.wholesalePrice.toString(),
             retailPrice:    editing.retailPrice.toString(),
           }
@@ -104,7 +107,22 @@ const ProductForm: React.FC<ProductFormProps> = ({
         </div>
 
         {/* Prices */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+              Cost Price (GH₵)
+            </label>
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              value={form.costPrice}
+              onChange={set('costPrice')}
+              disabled={loading}
+              placeholder="0.00"
+              className={inputCls}
+            />
+          </div>
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-1.5">
               Wholesale Price (GH₵)
