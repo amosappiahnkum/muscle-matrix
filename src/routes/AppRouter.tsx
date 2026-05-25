@@ -14,6 +14,7 @@ import OverviewTab            from '../pages/admin/overview/OverviewTab';
 import EmployeeManagement     from '../pages/admin/employees/index';
 import ProductManagement      from '../pages/products';
 import InventoryLog           from '../pages/admin/inventory/index';
+import ExpensesPage           from '../pages/admin/expenses/index';
 import SalesReport            from '../pages/admin/salesReport/index';
 import TransactionHistory     from '../pages/admin/transactions/index';
 import BackupRestore          from '../pages/admin/backup/BackupRestore';
@@ -48,6 +49,7 @@ const AppRouter: React.FC = () => (
         <Route path="/admin/employees"   element={<AdminRoute><EmployeeManagement /></AdminRoute>} />
         <Route path="/admin/products"    element={<AdminRoute><ProductManagement /></AdminRoute>} />
         <Route path="/admin/inventory"   element={<AdminRoute><InventoryLog /></AdminRoute>} />
+        <Route path="/admin/expenses"    element={<AdminRoute><ExpensesPage /></AdminRoute>} />
         <Route path="/admin/reports"     element={<AdminRoute><SalesReport /></AdminRoute>} />
         <Route path="/admin/transactions" element={<AdminRoute><TransactionHistory /></AdminRoute>} />
         <Route path="/admin/backup"      element={<AdminRoute><BackupRestore /></AdminRoute>} />

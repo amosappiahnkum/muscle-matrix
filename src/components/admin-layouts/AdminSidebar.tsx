@@ -1,7 +1,7 @@
 import React from 'react';
 import {
   Dumbbell, Users, Package, BarChart3,
-  LogOut, FileText, ShoppingCart, Download, KeyRound, ClipboardList,
+  LogOut, FileText, ShoppingCart, Download, KeyRound, ClipboardList, ReceiptText,
 } from 'lucide-react';
 import { TabType } from '../../pages/admin/AdminDashboard';
 import { User } from '../../types';
@@ -19,6 +19,7 @@ const menuItems: { id: TabType; label: string; icon: React.FC<{ className?: stri
   { id: 'employees',    label: 'Employees',           icon: Users        },
   { id: 'products',     label: 'Products',            icon: Package      },
   { id: 'inventory',    label: 'Inventory',           icon: ClipboardList },
+  { id: 'expenses',     label: 'Expenses',            icon: ReceiptText  },
   { id: 'reports',      label: 'Sales Reports',       icon: FileText     },
   { id: 'transactions', label: 'Transactions',        icon: ShoppingCart },
   { id: 'backup',       label: 'Backup & Restore',    icon: Download     },

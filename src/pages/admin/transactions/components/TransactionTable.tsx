@@ -1,6 +1,6 @@
 import React from 'react';
 import { format, parseISO } from 'date-fns';
-import { Eye, Printer, FileText } from 'lucide-react';
+import { Eye, Printer, FileText, Trash2 } from 'lucide-react';
 import { Transaction } from '@/types';
 import DataTable, { Column } from '@/components/common/DataTable';
 
@@ -11,6 +11,7 @@ interface TransactionTableProps {
   typeFilter:   string;
   onView:       (t: Transaction) => void;
   onPrint:      (t: Transaction) => void;
+  onDelete:     (t: Transaction) => void;
 }
 
 const TypeBadge: React.FC<{ type: 'wholesale' | 'retail' }> = ({ type }) => (
@@ -24,7 +25,7 @@ const TypeBadge: React.FC<{ type: 'wholesale' | 'retail' }> = ({ type }) => (
 );
 
 const TransactionTable: React.FC<TransactionTableProps> = ({
-  transactions, loading, searchQuery, typeFilter, onView, onPrint,
+  transactions, loading, searchQuery, typeFilter, onView, onPrint, onDelete,
 }) => {
   const columns: Column<Transaction>[] = [
     {
@@ -86,6 +87,14 @@ const TransactionTable: React.FC<TransactionTableProps> = ({
               hover:bg-green-100 transition-colors"
           >
             <Printer size={13} />
+          </button>
+          <button
+            onClick={() => onDelete(t)}
+            title="Delete Sale"
+            className="p-1.5 bg-red-50 text-red-500 rounded-lg border border-red-100
+              hover:bg-red-100 transition-colors"
+          >
+            <Trash2 size={13} />
           </button>
         </div>
       ),
