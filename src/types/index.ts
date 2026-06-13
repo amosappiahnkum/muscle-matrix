@@ -38,9 +38,9 @@ export interface Product {
   id:             string;
   name:           string;
   quantity:       number;
-  expiryDate:     string | null;   
-  isExpired:      boolean;        
-  isExpiringSoon: boolean;         
+  expiryDate:     string | null;
+  isExpired:      boolean;
+  isExpiringSoon: boolean;
   costPrice:      number;
   wholesalePrice: number;
   retailPrice:    number;
@@ -54,8 +54,9 @@ export interface ProductPayload {
   costPrice:      number;
   wholesalePrice: number;
   retailPrice:    number;
-  expiry_date?:   string | null;   
+  expiry_date?:   string | null;
 }
+
 // ─── Inventory ────────────────────────────────────────────────────────────────
 
 export type InventoryEntryType =
@@ -65,81 +66,84 @@ export type InventoryEntryType =
   | 'adjustment';
 
 export interface InventoryEntry {
-  id: string;
-  productId: string;
-  productName: string;
-
-  type: InventoryEntryType;
-
+  id:             string;
+  productId:      string;
+  productName:    string;
+  type:           InventoryEntryType;
   quantityBefore: number;
   quantityChange: number;
-  quantityAfter: number;
-
-  transactionId: string | null;
-  note: string | null;
-  createdBy: string | null;
-  createdAt: string;
-  batchId: string | null;
-  batchCode: string | null;
-  
-  
+  quantityAfter:  number;
+  transactionId:  string | null;
+  note:           string | null;
+  createdBy:      string | null;
+  createdAt:      string;
+  batchId:        string | null;
+  batchCode:      string | null;
 }
 
 export interface Batch {
-  id: string;
-
-  batchCode: string;
-
-  description: string;
-
-  productId: string;
-  productName: string | null;
-
-  quantity: number;
-  remainingQuantity: number;
-
-  expiryDate: string | null;
-  supplier: string | null;
-
-  createdAt: string | null;
-}
-
-export interface RestockPayload {
-  productId: string;
-  quantity: number;
-  note?: string;
-  expiry_date?: string | null;
-
-  createBatch?: boolean;
-  batchDescription?: string;
-  existingBatchId?: string;
-
-  supplier?: string;
-}
-
-export interface AdjustPayload {
-  productId: string;
-  quantity: number;
-  note?: string;
-  expiry_date?: string | null;
-}
-
-// ─── Sales & Transactions ─────────────────────────────────────────────────────
-
-export type ExpenseType = 'custom' | 'inventory_batch';
-
-export interface ExpenseBatch {
   id:                string;
-  name:              string | null;
+  batchCode:         string;
+  description:       string;
   productId:         string;
   productName:       string | null;
   quantity:          number;
   remainingQuantity: number;
+  expiryDate:        string | null;
+  supplier:          string | null;
+  createdAt:         string | null;
+}
+
+export interface RestockPayload {
+  productId:        string;
+  quantity:         number;
+  note?:            string;
+  expiry_date?:     string | null;
+  createBatch?:     boolean;
+  batchDescription?: string;
+  existingBatchId?: string;
+  supplier?:        string;
+}
+
+export interface AdjustPayload {
+  productId:   string;
+  quantity:    number;
+  note?:       string;
+  expiry_date?: string | null;
+}
+
+// ─── Expenses & Batches ───────────────────────────────────────────────────────
+
+export type ExpenseType = 'custom' | 'inventory_batch';
+
+/**
+ * One product line inside an expense batch.
+ * Used both in API responses (ExpenseBatch.products) and in the form state.
+ */
+export interface BatchProductItem {
+  productId:   string;
+  productName: string | null;
+  quantity:    number;
+  unitCost:    number;
+  totalCost:   number;
+}
+
+export interface ExpenseBatch {
+  id:                string;
+  name:              string | null;
+  // Legacy single-product fields — kept for backward compatibility.
+  // Prefer `products` when present.
+  productId:         string | null;
+  productName:       string | null;
+  quantity:          number | null;
+  remainingQuantity: number | null;
   unitCost:          number | null;
   totalCost:         number | null;
   expiryDate:        string | null;
   supplier:          string | null;
   note:              string | null;
+  // Multi-product list returned by the API (may be absent on older records)
+  products?:         BatchProductItem[];
 }
 
 export interface Expense {
@@ -158,20 +162,35 @@ export interface Expense {
   updatedAt:   string;
 }
 
+/**
+ * One product line sent in a create/update payload.
+ */
+export interface BatchProductPayload {
+  productId: string;
+  quantity:  number;
+  unitCost:  number;
+}
+
 export interface ExpensePayload {
+  // ── create new batch ──
   createBatch?: boolean;
-  batchId?:     string;
   batchName?:   string | null;
-  productId?:   string;
-  quantity?:    number;
-  unitCost?:    number;
+  /** Multi-product list (replaces the old single productId/quantity/unitCost) */
+  products?:    BatchProductPayload[];
   expiryDate?:  string | null;
   supplier?:    string | null;
+
+  // ── link / update existing batch ──
+  batchId?:     string;
+
+  // ── shared ──
   description:  string;
   amount?:      number;
   category?:    string | null;
   note?:        string | null;
 }
+
+// ─── Sales & Transactions ─────────────────────────────────────────────────────
 
 export interface SaleItem {
   productId:   string;

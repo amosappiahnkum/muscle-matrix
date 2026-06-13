@@ -8,7 +8,7 @@ interface ModalProps {
   subtitle?:   string;
   icon?:       React.ReactNode;
   children:    React.ReactNode;
-  maxWidth?:   'sm' | 'md' | 'lg' | 'xl' | '2xl';
+  maxWidth?:   'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl' | '5xl';
   /** Side panel rendered to the left of the form (landscape layout) */
   aside?:      React.ReactNode;
   /** If true, clicking the backdrop does NOT close */
@@ -21,6 +21,9 @@ const maxWidthMap = {
   lg:  'max-w-lg',
   xl:  'max-w-xl',
   '2xl': 'max-w-2xl',
+  '3xl': 'max-w-3xl',
+  '4xl': 'max-w-4xl',
+  '5xl': 'max-w-5xl',
 };
 
 const Modal: React.FC<ModalProps> = ({
@@ -48,13 +51,19 @@ const Modal: React.FC<ModalProps> = ({
 
   const isLandscape = !!aside;
 
+  // Landscape modals default to a wider frame (4xl) unless maxWidth
+  // is explicitly set wider than that.
+  const landscapeWidth = ['4xl', '5xl'].includes(maxWidth)
+    ? maxWidthMap[maxWidth]
+    : maxWidthMap['4xl'];
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
       onClick={() => !persistent && onClose?.()}
     >
       <div
-        className={`w-full ${isLandscape ? 'max-w-3xl' : maxWidthMap[maxWidth]}
+        className={`w-full ${isLandscape ? landscapeWidth : maxWidthMap[maxWidth]}
           bg-white rounded-2xl border border-gray-200 shadow-2xl overflow-hidden
           flex flex-col md:flex-row`}
         style={{ maxHeight: '90vh' }}

@@ -4,23 +4,22 @@ import { format, parseISO } from 'date-fns';
 import { Product } from '@/types';
 import { ExpiryBadge } from './ExpiryBadge';
 
-// Updated interface to include batches array passed from parent container
 interface Batch {
-  id: string;
-  batchCode: string;
-  remaining?: number;
+  id:          string;
+  batchCode:   string;
+  name?:       string | null;
+  remaining?:  number;
   expiryDate?: string;
-  supplier?: string;
+  supplier?:   string;
 }
 
 interface ProductDetailPanelProps {
   product: Product | null;
-  batches: Batch[]; // Accept filtered product batches
+  batches: Batch[];
   onClose: () => void;
 }
 
 export const ProductDetailPanel: React.FC<ProductDetailPanelProps> = ({ product, batches, onClose }) => {
-  // Close on Escape key
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
     document.addEventListener('keydown', handleKey);
@@ -30,25 +29,22 @@ export const ProductDetailPanel: React.FC<ProductDetailPanelProps> = ({ product,
   if (!product) return null;
 
   return (
-    /* Backdrop */
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
       onClick={onClose}
     >
-      {/* Landscape Modal Card (max-w-3xl gives it the wide landscape look) */}
       <div
         className="relative w-full max-w-3xl bg-white rounded-2xl shadow-2xl overflow-hidden
           animate-in fade-in zoom-in-95 duration-150"
         onClick={(e) => e.stopPropagation()}
       >
-
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 bg-gray-50 border-b border-gray-100">
           <div className="flex items-center gap-2">
             <div className="bg-blue-50 border border-blue-100 p-1.5 rounded-lg">
               <Package size={16} className="text-blue-500" />
             </div>
-            <span className="text-sm font-semibold text-gray-700">Product Management Details</span>
+            <span className="text-sm font-semibold text-gray-700">Product Details</span>
           </div>
           <button
             onClick={onClose}
@@ -58,18 +54,16 @@ export const ProductDetailPanel: React.FC<ProductDetailPanelProps> = ({ product,
           </button>
         </div>
 
-        {/* Two-Column Landscape Body */}
+        {/* Two-column body */}
         <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-gray-100">
-          
-          {/* Left Column: Core Metrics */}
+
+          {/* Left: product metrics */}
           <div className="p-6 space-y-4">
-            {/* Name */}
             <div>
               <p className="text-xs text-gray-400 uppercase tracking-widest font-semibold mb-0.5">Name</p>
               <p className="text-base font-bold text-gray-800">{product.name}</p>
             </div>
 
-            {/* Stock + Status */}
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <p className="text-xs text-gray-400 uppercase tracking-widest font-semibold mb-0.5">Total Stock</p>
@@ -92,7 +86,6 @@ export const ProductDetailPanel: React.FC<ProductDetailPanelProps> = ({ product,
               </div>
             </div>
 
-            {/* Prices */}
             <div className="grid grid-cols-3 gap-2">
               <div>
                 <p className="text-xs text-gray-400 uppercase tracking-widest font-semibold mb-0.5">Cost</p>
@@ -108,7 +101,6 @@ export const ProductDetailPanel: React.FC<ProductDetailPanelProps> = ({ product,
               </div>
             </div>
 
-            {/* Expiry */}
             <div>
               <p className="text-xs text-gray-400 uppercase tracking-widest font-semibold mb-1.5">Primary Expiry</p>
               <ExpiryBadge
@@ -118,7 +110,6 @@ export const ProductDetailPanel: React.FC<ProductDetailPanelProps> = ({ product,
               />
             </div>
 
-            {/* System Dates */}
             <div className="pt-3 border-t border-gray-100 grid grid-cols-2 gap-4">
               <div>
                 <p className="text-xs text-gray-400 uppercase tracking-widest font-semibold mb-0.5">Added</p>
@@ -131,13 +122,13 @@ export const ProductDetailPanel: React.FC<ProductDetailPanelProps> = ({ product,
             </div>
           </div>
 
-          {/* Right Column: Associated Batches */}
+          {/* Right: batch list */}
           <div className="p-6 bg-gray-50/50 flex flex-col justify-between">
             <div>
               <div className="flex items-center gap-2 mb-3">
                 <Layers size={14} className="text-gray-400" />
                 <h4 className="text-xs text-gray-400 uppercase tracking-widest font-semibold">
-                  Batches Registered Under Product
+                  Batches ({batches.length})
                 </h4>
               </div>
 
@@ -149,24 +140,36 @@ export const ProductDetailPanel: React.FC<ProductDetailPanelProps> = ({ product,
               ) : (
                 <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
                   {batches.map((b) => (
-                    <div 
-                      key={b.id} 
-                      className="bg-white p-3 rounded-xl border border-gray-150 shadow-sm flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2"
+                    <div
+                      key={b.id}
+                      className="bg-white p-3 rounded-xl border border-gray-100 shadow-sm"
                     >
-                      <div>
-                        <p className="font-mono text-xs font-bold text-gray-800">{b.batchCode}</p>
-                        {b.supplier && (
-                          <p className="text-[10px] text-gray-400 mt-0.5">Vendor: {b.supplier}</p>
-                        )}
-                        {b.expiryDate && (
-                          <p className="text-[10px] text-gray-500 mt-0.5">
-                            Expires: {format(parseISO(b.expiryDate), 'dd MMM yyyy')}
+                      {/* Batch name — most prominent */}
+                      <div className="flex items-start justify-between gap-2 mb-1.5">
+                        <div className="min-w-0">
+                          <p className="text-sm font-bold text-gray-800 truncate">
+                            {b.name ?? 'Unnamed Batch'}
                           </p>
-                        )}
+                          {/* Batch code below name, smaller */}
+                          <p className="font-mono text-[10px] text-blue-500 font-semibold mt-0.5">
+                            {b.batchCode}
+                          </p>
+                        </div>
+                        {/* Remaining units pill */}
+                        <div className="text-right shrink-0 bg-gray-50 px-2.5 py-1.5 rounded-lg border border-gray-100">
+                          <span className="text-[10px] uppercase text-gray-400 block font-semibold">Remaining</span>
+                          <span className="text-xs font-bold text-gray-700 tabular-nums">
+                            {b.remaining ?? 0} units
+                          </span>
+                        </div>
                       </div>
-                      <div className="text-right whitespace-nowrap bg-gray-50 px-2.5 py-1.5 rounded-lg border border-gray-100">
-                        <span className="text-[10px] uppercase text-gray-400 block font-semibold">Remaining</span>
-                        <span className="text-xs font-bold text-gray-700 tabular-nums">{b.remaining ?? 0} units</span>
+
+                      {/* Meta row */}
+                      <div className="flex items-center gap-3 text-[10px] text-gray-400">
+                        {b.supplier && <span>📦 {b.supplier}</span>}
+                        {b.expiryDate && (
+                          <span>⏳ Expires {format(parseISO(b.expiryDate), 'dd MMM yyyy')}</span>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -174,7 +177,6 @@ export const ProductDetailPanel: React.FC<ProductDetailPanelProps> = ({ product,
               )}
             </div>
 
-            {/* Close Button at bottom of right column layout structure */}
             <div className="mt-4 pt-3 border-t border-gray-100 hidden md:block">
               <button
                 onClick={onClose}
@@ -186,7 +188,6 @@ export const ProductDetailPanel: React.FC<ProductDetailPanelProps> = ({ product,
           </div>
         </div>
 
-        {/* Fallback Mobile Button (Visible only on small screens) */}
         <div className="px-6 pb-5 md:hidden">
           <button
             onClick={onClose}
@@ -195,7 +196,6 @@ export const ProductDetailPanel: React.FC<ProductDetailPanelProps> = ({ product,
             Close
           </button>
         </div>
-
       </div>
     </div>
   );
