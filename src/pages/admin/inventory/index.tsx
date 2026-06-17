@@ -1,60 +1,61 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { ClipboardList, Minus, Plus, RotateCcw } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { ClipboardList, Minus, Plus, RotateCcw, Eye } from 'lucide-react';
 import { format, isToday, isThisWeek, parseISO } from 'date-fns';
-import { getProducts, getInventoryLog, addStock, adjustStock, getBatches } from '@/api/api.ts';
+import { getProducts, getInventoryLog, adjustStock, getBatches } from '@/api/api.ts';
 import { Product, InventoryEntry } from '@/types';
 import DataTable, { Column } from '@/components/common/DataTable.tsx';
 import Button from '@/components/common/Button.tsx';
 import { SuccessBanner } from '@/components/common/Banner.tsx';
 
-import { ChangeBadge }   from './components/ChangeBadge';
-import { TypeBadge }     from './components/TypeBadge';
-import { ExpiryBadge }   from './components/ExpiryBadge';
-import { AddStockModal } from './components/AddStockModal';
+import { ChangeBadge }    from './components/ChangeBadge';
+import { TypeBadge }      from './components/TypeBadge';
 import { RemoveStockModal } from './components/RemoveStockModal';
-import { ProductDetailPanel }  from './components/ProductDetailPanel';
+import DetailModal from './components/DetailModal';
 import {
   InventoryFilters,
   FilterType, DateRange, ExpiryFilter,
 } from './components/InventoryFilters';
 
-// Updated interface to support the details expected in the panel
 interface Batch {
-  id: string;
-  batchCode: string;
-  productId?: string;
-  quantity?: number;
-  remaining?: number;
-  expiryDate?: string;
-  supplier?: string;
+  id:               string;
+  batchCode:        string;
+  name?:            string | null;
+  productId?:       string;
+  quantity?:        number;
+  remaining?:       number;
+  expiryDate?:      string;
+  supplier?:        string;
   batchDescription?: string;
+  products?: {
+    productId:   string;
+    productName: string | null;
+    quantity:    number;
+    unitCost:    number;
+    totalCost:   number;
+  }[];
 }
 
-// ── Main Component ────────────────────────────────────────────────────────────
 const InventoryLog: React.FC = () => {
-  const [entries,         setEntries]         = useState<InventoryEntry[]>([]);
-  const [products,        setProducts]        = useState<Product[]>([]);
-  const [loading,         setLoading]         = useState(true);
-  const [search,          setSearch]          = useState('');
-  const [typeFilter,      setTypeFilter]      = useState<FilterType>('all');
-  const [dateRange,       setDateRange]       = useState<DateRange>('all');
-  const [expiryFilter,    setExpiryFilter]    = useState<ExpiryFilter>('all');
-  
-  // 1. New batch code select filter state
-  const [selectedBatchCode, setSelectedBatchCode] = useState<string>('all');
-  
-  const [customFrom,      setCustomFrom]      = useState('');
-  const [customTo,        setCustomTo]        = useState('');
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  const [modalOpen,       setModalOpen]       = useState(false);
-  const [modalLoading,    setModalLoading]    = useState(false);
-  const [modalError,      setModalError]      = useState('');
-  const [removeOpen,      setRemoveOpen]      = useState(false);
-  const [removeLoading,   setRemoveLoading]   = useState(false);
-  const [removeError,     setRemoveError]     = useState('');
-  const [success,         setSuccess]         = useState('');
-  
-  const [batches, setBatches] = useState<Batch[]>([]);
+  const navigate = useNavigate();
+
+  const [entries,          setEntries]          = useState<InventoryEntry[]>([]);
+  const [products,         setProducts]         = useState<Product[]>([]);
+  const [loading,          setLoading]          = useState(true);
+  const [search,           setSearch]           = useState('');
+  const [typeFilter,       setTypeFilter]       = useState<FilterType>('all');
+  const [dateRange,        setDateRange]        = useState<DateRange>('all');
+  const [expiryFilter,     setExpiryFilter]     = useState<ExpiryFilter>('all');
+  const [selectedBatchCode,setSelectedBatchCode]= useState<string>('all');
+  const [customFrom,       setCustomFrom]       = useState('');
+  const [customTo,         setCustomTo]         = useState('');
+  const [selectedProduct,  setSelectedProduct]  = useState<Product | null>(null);
+  const [viewingEntry,     setViewingEntry]     = useState<InventoryEntry | null>(null);
+  const [removeOpen,       setRemoveOpen]       = useState(false);
+  const [removeLoading,    setRemoveLoading]    = useState(false);
+  const [removeError,      setRemoveError]      = useState('');
+  const [success,          setSuccess]          = useState('');
+  const [batches,          setBatches]          = useState<Batch[]>([]);
 
   const flash = (msg: string) => {
     setSuccess(msg);
@@ -69,7 +70,6 @@ const InventoryLog: React.FC = () => {
         getProducts(),
         getBatches(),
       ]);
-
       setEntries(log);
       setProducts(prods);
       setBatches(batchRows);
@@ -80,90 +80,22 @@ const InventoryLog: React.FC = () => {
     }
   }, []);
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  useEffect(() => { load(); }, [load]);
 
-  const handleAddStock = async (
-    productId: string,
-    quantity: number,
-    note: string,
-    expiryDate: string,
-    batch: {
-      createBatch: boolean;
-      batchDescription: string;
-      existingBatchId: string;
-      supplier: string;
-    },
-  ) => {
-    setModalError('');
-
-    if (!productId) {
-      setModalError('Please select a product.');
-      return;
-    }
-    if (!quantity || quantity < 1) {
-      setModalError('Quantity must be at least 1.');
-      return;
-    }
-    if (batch.createBatch && !batch.batchDescription.trim()) {
-      setModalError('Batch description is required.');
-      return;
-    }
-    if (!batch.createBatch && !batch.existingBatchId) {
-      setModalError('Please select an existing batch.');
-      return;
-    }
-
-    setModalLoading(true);
-    try {
-      await addStock({
-        productId,
-        quantity,
-        note,
-        expiry_date: expiryDate || undefined,
-        createBatch: batch.createBatch,
-        batchDescription: batch.createBatch ? batch.batchDescription.trim() : undefined,
-        existingBatchId: !batch.createBatch ? batch.existingBatchId : undefined,
-        supplier: batch.supplier.trim() || undefined,
-      });
-
-      flash('Stock added successfully.');
-      setModalOpen(false);
-      await load();
-    } catch (err: unknown) {
-      setModalError(err instanceof Error ? err.message : 'Failed to add stock.');
-    } finally {
-      setModalLoading(false);
-    }
-  };
-
-  const handleRemoveStock = async (
-    productId: string,
-    quantity: number,
-    note: string,
-  ) => {
+  const handleRemoveStock = async (productId: string, quantity: number, note: string) => {
     setRemoveError('');
-    if (!productId)                 { setRemoveError('Please select a product.'); return; }
+    if (!productId)              { setRemoveError('Please select a product.'); return; }
     if (!quantity || quantity < 1) { setRemoveError('Quantity must be at least 1.'); return; }
 
     const product = products.find((p) => p.id === productId);
-    if (!product) {
-      setRemoveError('Selected product was not found.');
-      return;
-    }
+    if (!product)                { setRemoveError('Selected product was not found.'); return; }
     if (quantity > product.quantity) {
-      setRemoveError(`Cannot remove more than current stock (${product.quantity}).`);
-      return;
+      setRemoveError(`Cannot remove more than current stock (${product.quantity}).`); return;
     }
 
     setRemoveLoading(true);
     try {
-      await adjustStock({
-        productId,
-        quantity: -quantity,
-        note: note || 'Removed from inventory',
-      });
+      await adjustStock({ productId, quantity: -quantity, note: note || 'Removed from inventory' });
       flash('Stock removed successfully.');
       setRemoveOpen(false);
       await load();
@@ -176,16 +108,14 @@ const InventoryLog: React.FC = () => {
 
   const handleProductClick = (entry: InventoryEntry) => {
     const product = products.find((p) => p.id === entry.productId);
-    if (!product) return;                                    
+    if (!product) return;
     setSelectedProduct((prev) => prev?.id === product.id ? null : product);
   };
 
-  // ── Filters (Updated to handle Batch Filtering) ───────────────────────────
+  // ── Filters ───────────────────────────────────────────────────────────────
   const filtered = entries.filter((e) => {
     if (selectedProduct && e.productId !== selectedProduct.id) return false;
     if (typeFilter !== 'all' && e.type !== typeFilter)         return false;
-
-    // 2. Filter logic evaluating batchCode properties matched from the logs
     if (selectedBatchCode !== 'all' && e.batchCode !== selectedBatchCode) return false;
 
     if (dateRange === 'today'  && !isToday(parseISO(e.createdAt)))    return false;
@@ -218,14 +148,33 @@ const InventoryLog: React.FC = () => {
       key: 'productName',
       header: 'Product',
       render: (e) => (
-        <button onClick={() => handleProductClick(e)} className="text-left group">
-          <p className="text-sm font-semibold text-gray-800 group-hover:text-blue-600">
+        <div className="text-left group">
+          {e.batchCode && (
+            <p className="text-[10px] font-semibold text-blue-500 uppercase tracking-wider mb-0.5">
+              {batches.find(b => b.batchCode === e.batchCode)?.name ?? e.batchCode}
+            </p>
+          )}
+          <button
+            onClick={() => navigate(`/admin/products/${e.productId}`)}
+            className="text-sm font-semibold text-gray-800 hover:text-blue-600 hover:underline
+              transition-colors text-left"
+            title="View / edit product"
+          >
             {e.productName}
-          </p>
+          </button>
+          <div className="flex items-center gap-2 mt-0.5">
+            <button
+              onClick={() => handleProductClick(e)}
+              className="text-[10px] text-gray-400 hover:text-orange-500 transition-colors"
+              title="Filter inventory log by this product"
+            >
+              {selectedProduct?.id === e.productId ? 'Clear filter' : 'Filter by this product'}
+            </button>
+          </div>
           {e.createdBy && (
             <p className="text-gray-400 text-xs mt-0.5">by {e.createdBy}</p>
           )}
-        </button>
+        </div>
       ),
     },
     {
@@ -248,11 +197,25 @@ const InventoryLog: React.FC = () => {
       key: 'batch',
       header: 'Batch',
       align: 'center',
-      render: (e) => (
-        <span className="text-xs font-medium text-gray-500">
-          {e.batchCode ?? '—'}
-        </span>
-      ),
+      render: (e) => {
+        const batch = batches.find(b => b.batchCode === e.batchCode);
+        return e.batchCode ? (
+          <button
+            onClick={() => batch && navigate(`/admin/batches/${batch.id}`)}
+            className="text-center group cursor-pointer"
+            title="View batch details"
+          >
+            {batch?.name && (
+              <p className="text-xs font-semibold text-gray-700 group-hover:text-blue-600">
+                {batch.name}
+              </p>
+            )}
+            <p className="font-mono text-[10px] text-blue-500">{e.batchCode}</p>
+          </button>
+        ) : (
+          <span className="text-xs text-gray-400">—</span>
+        );
+      },
     },
     {
       key: 'note', header: 'Note',
@@ -266,11 +229,26 @@ const InventoryLog: React.FC = () => {
         </span>
       ),
     },
+    {
+      key: 'actions',
+      header: '',
+      align: 'right',
+      render: (e) => (
+        <button
+          onClick={() => setViewingEntry(e)}
+          title="View details"
+          className="p-1.5 bg-blue-50 text-blue-500 rounded-lg border border-blue-100
+            hover:bg-blue-100 transition-colors"
+        >
+          <Eye size={14} />
+        </button>
+      ),
+    },
   ];
 
   return (
     <div className="space-y-5">
-      {/* ── Page header ────────────────────────────────────────────────── */}
+      {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="flex items-center gap-3">
           <div className="bg-blue-50 border border-blue-200 p-2.5 rounded-xl">
@@ -297,7 +275,11 @@ const InventoryLog: React.FC = () => {
             variant="primary"
             color="orange"
             icon={<Plus size={16} />}
-            onClick={() => { setModalError(''); setModalOpen(true); }}
+            onClick={() => navigate(
+              selectedProduct
+                ? `/admin/inventory/add-stock?productId=${selectedProduct.id}`
+                : '/admin/inventory/add-stock'
+            )}
           >
             Add Stock
           </Button>
@@ -306,7 +288,7 @@ const InventoryLog: React.FC = () => {
 
       {success && <SuccessBanner message={success} onDismiss={() => setSuccess('')} />}
 
-      {/* ── Filters ────────────────────────────────────────────────────── */}
+      {/* Filters */}
       <div className="space-y-3">
         <InventoryFilters
           search={search}
@@ -323,8 +305,7 @@ const InventoryLog: React.FC = () => {
           onCustomFromChange={setCustomFrom}
           onCustomToChange={setCustomTo}
         />
-        
-        {/* 3. Dropdown UI element added to interactively swap batch fields */}
+
         <div className="flex items-center gap-2 bg-white p-3 rounded-xl border border-gray-200 shadow-sm max-w-xs">
           <label htmlFor="batchSelect" className="text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">
             Filter By Batch:
@@ -336,53 +317,40 @@ const InventoryLog: React.FC = () => {
             className="w-full text-sm bg-gray-50 border border-gray-200 rounded-lg p-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="all">All Batches</option>
-            {Array.from(new Set(entries.map((e) => e.batchCode).filter(Boolean))).map((code) => (
-              <option key={code} value={code}>
-                {code}
-              </option>
-            ))}
+            {Array.from(new Set(entries.map((e) => e.batchCode).filter(Boolean))).map((code) => {
+              const batch = batches.find(b => b.batchCode === code);
+              return (
+                <option key={code} value={code}>
+                  {batch?.name ? `${batch.name} (${code})` : code}
+                </option>
+              );
+            })}
           </select>
         </div>
       </div>
 
-      {/* ── Table ───────────────────────────────────────────────────────── */}
+      {/* Table */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
         {loading ? (
-          <div className="py-10 text-center text-gray-400 text-sm">
-            Loading inventory...
-          </div>
+          <div className="py-10 text-center text-gray-400 text-sm">Loading inventory...</div>
         ) : filtered?.length === 0 ? (
           <div className="py-14 text-center">
             <div className="w-14 h-14 bg-gray-50 border border-gray-200 rounded-2xl flex items-center justify-center mx-auto mb-3">
               <ClipboardList size={24} className="text-gray-300" />
             </div>
             <p className="text-gray-500 text-sm font-medium">No entries found</p>
-            <p className="text-gray-400 text-xs mt-1">
-              Try adjusting your filters or selecting a different batch.
-            </p>
+            <p className="text-gray-400 text-xs mt-1">Try adjusting your filters or selecting a different batch.</p>
           </div>
         ) : (
           <DataTable columns={columns} data={filtered} keyExtractor={(e) => e.id} loading={loading} />
         )}
       </div>
 
-      {/* ── Product detail modal ─────────────────────────────────────────── */}
-      {/* 4. We filter down the system-wide batches to only ones matching this product and pass them down */}
-      <ProductDetailPanel
-        product={selectedProduct}
-        batches={batches.filter((b) => b.productId === selectedProduct?.id)}
-        onClose={() => setSelectedProduct(null)}
-      />
-
-      <AddStockModal
-        open={modalOpen}
-        products={products}
+      {/* Entry view modal */}
+      <DetailModal
+        entry={viewingEntry}
         batches={batches}
-        loading={modalLoading}
-        error={modalError}
-        preselectedId={selectedProduct?.id}
-        onClose={() => setModalOpen(false)}
-        onSubmit={handleAddStock}
+        onClose={() => setViewingEntry(null)}
       />
 
       <RemoveStockModal

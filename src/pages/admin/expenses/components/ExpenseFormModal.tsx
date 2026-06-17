@@ -1,59 +1,204 @@
-import React from 'react';
-import { Expense, ExpenseBatch, Product } from '@/types';
+import React, { useEffect, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { ArrowLeft, ReceiptText, Save } from 'lucide-react';
+import { Product, ExpenseBatch, Expense } from '@/types';
 import Button from '@/components/common/Button';
-import Modal from '@/components/common/Modal';
 import Field from '@/components/common/Field';
-import { ExpenseFormData, ExpenseMode } from './useExpenses';
+import { ErrorBanner, SuccessBanner } from '@/components/common/Banner';
+import { BatchProductEntry, ExpenseFormData, ExpenseMode } from './useExpenses';
+import { getExpense } from '@/api/api';
 
 const inputCls = `w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg
   text-gray-900 placeholder-gray-400 text-sm
   focus:outline-none focus:bg-white focus:border-orange-400
   focus:ring-2 focus:ring-orange-100 transition-all`;
 
-interface ExpenseFormModalProps {
-  open:         boolean;
-  editing:      Expense | null;
-  form:         ExpenseFormData;
-  products:     Product[];
-  batches:      ExpenseBatch[];
-  loading:      boolean;
-  onChange:     (key: keyof ExpenseFormData) =>
-    (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => void;
-  onModeChange: (mode: ExpenseMode) => void;
-  onClose:      () => void;
-  onSubmit:     () => void;
+// ─── small sub-component: one product row ─────────────────────────────────────
+
+interface ProductRowProps {
+  row:       BatchProductEntry;
+  index:     number;
+  products:  Product[];
+  canRemove: boolean;
+  disabled:  boolean;
+  onChange:  (field: keyof BatchProductEntry, value: string) => void;
+  onRemove:  () => void;
 }
 
-const ExpenseFormModal: React.FC<ExpenseFormModalProps> = ({
-  open,
+const ProductRow: React.FC<ProductRowProps> = ({
+  row, index, products, canRemove, disabled, onChange, onRemove,
+}) => {
+  const qty      = Number.parseInt(row.quantity || '0', 10);
+  const cost     = Number(row.unitCost || '0');
+  const rowTotal = (Number.isNaN(qty) ? 0 : qty) * (Number.isNaN(cost) ? 0 : cost);
+
+  return (
+    <div className="grid grid-cols-12 gap-2 items-end">
+      <div className="col-span-12 sm:col-span-4">
+        {index === 0 && (
+          <label className="block text-xs font-medium text-gray-600 mb-1">Product</label>
+        )}
+        <select
+          value={row.productId}
+          onChange={e => onChange('productId', e.target.value)}
+          disabled={disabled}
+          className={inputCls}
+        >
+          <option value="">Select product</option>
+          {products.map(p => (
+            <option key={p.id} value={p.id}>{p.name}</option>
+          ))}
+        </select>
+      </div>
+
+      <div className="col-span-4 sm:col-span-2">
+        {index === 0 && (
+          <label className="block text-xs font-medium text-gray-600 mb-1">Qty</label>
+        )}
+        <input
+          type="number"
+          min="1"
+          value={row.quantity}
+          onChange={e => onChange('quantity', e.target.value)}
+          disabled={disabled}
+          className={inputCls}
+          placeholder="0"
+        />
+      </div>
+
+      <div className="col-span-4 sm:col-span-3">
+        {index === 0 && (
+          <label className="block text-xs font-medium text-gray-600 mb-1">Unit Cost</label>
+        )}
+        <input
+          type="number"
+          min="0"
+          step="0.01"
+          value={row.unitCost}
+          onChange={e => onChange('unitCost', e.target.value)}
+          disabled={disabled}
+          className={inputCls}
+          placeholder="0.00"
+        />
+      </div>
+
+      <div className="col-span-3 sm:col-span-2">
+        {index === 0 && (
+          <label className="block text-xs font-medium text-gray-600 mb-1">Total</label>
+        )}
+        <input
+          type="text"
+          value={`GH₵${rowTotal.toFixed(2)}`}
+          disabled
+          className={`${inputCls} text-gray-500`}
+        />
+      </div>
+
+      <div className="col-span-1 flex items-end pb-0.5">
+        {index === 0 && <div className="mb-1 h-4" />}
+        <button
+          type="button"
+          onClick={onRemove}
+          disabled={disabled || !canRemove}
+          title="Remove row"
+          className="w-8 h-9 flex items-center justify-center rounded-lg text-gray-400
+            hover:text-red-500 hover:bg-red-50 disabled:opacity-30 disabled:cursor-not-allowed
+            transition-colors"
+        >
+          ×
+        </button>
+      </div>
+    </div>
+  );
+};
+
+// ─── page ───────────────────────────────────────────────────────────────────
+
+interface ExpenseFormPageProps {
+  editing:              Expense | null;
+  form:                 ExpenseFormData;
+  products:             Product[];
+  batches:              ExpenseBatch[];
+  loading:              boolean;
+  error:                string;
+  success:              string;
+  onChange:             (key: keyof ExpenseFormData) =>
+    (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => void;
+  onModeChange:         (mode: ExpenseMode) => void;
+  onBatchProductChange: (index: number, field: keyof BatchProductEntry, value: string) => void;
+  onAddBatchProduct:    () => void;
+  onRemoveBatchProduct: (index: number) => void;
+  onSubmit:             () => void;
+  onCancel:             () => void;
+  onDismissError:       () => void;
+  onDismissSuccess:     () => void;
+}
+
+export const ExpenseFormPage: React.FC<ExpenseFormPageProps> = ({
   editing,
   form,
   products,
   batches,
   loading,
+  error,
+  success,
   onChange,
   onModeChange,
-  onClose,
+  onBatchProductChange,
+  onAddBatchProduct,
+  onRemoveBatchProduct,
   onSubmit,
+  onCancel,
+  onDismissError,
+  onDismissSuccess,
 }) => {
-  const isBatch     = form.mode === 'inventory_batch';
-  const selectedBatch = batches.find((batch) => batch.id === form.batchId);
+  const isBatch         = form.mode === 'inventory_batch';
+  const selectedBatch   = batches.find(b => b.id === form.batchId);
   const isExistingBatch = isBatch && !!form.batchId;
-  const batchAmount = Number.parseInt(form.quantity || '0', 10) * Number(form.unitCost || '0');
+
+  const grandTotal = form.batchProducts.reduce((sum, row) => {
+    const qty  = Number.parseInt(row.quantity || '0', 10);
+    const cost = Number(row.unitCost || '0');
+    return sum + (Number.isNaN(qty) ? 0 : qty) * (Number.isNaN(cost) ? 0 : cost);
+  }, 0);
+
+  const showProductEditor = isBatch && (!editing || isExistingBatch);
+  const showBatchMeta     = isBatch && !editing && !isExistingBatch;
 
   return (
-    <Modal
-      open={open}
-      onClose={onClose}
-      title={editing ? 'Edit Expense' : 'Add Expense'}
-      maxWidth="xl"
-      persistent={loading}
-    >
-      <div className="space-y-4">
-        {/* Mode toggle — only shown when creating */}
+    <div className="space-y-5 max-w-3xl">
+      {/* Header */}
+      <div className="flex items-center gap-3">
+        <button
+          onClick={onCancel}
+          title="Back"
+          className="p-2 rounded-xl border border-gray-200 text-gray-500
+            hover:text-gray-700 hover:bg-gray-50 transition-colors"
+        >
+          <ArrowLeft size={18} />
+        </button>
+        <div className="bg-orange-50 border border-orange-200 p-2.5 rounded-xl">
+          <ReceiptText size={20} className="text-orange-500" />
+        </div>
+        <div>
+          <h3 className="text-lg font-semibold text-gray-900">
+            {editing ? 'Edit Expense' : 'Add Expense'}
+          </h3>
+          <p className="text-gray-400 text-sm">
+            {editing ? 'Update the details of this expense' : 'Record a new expense or inventory purchase'}
+          </p>
+        </div>
+      </div>
+
+      {success && <SuccessBanner message={success} onDismiss={onDismissSuccess} />}
+      {error   && <ErrorBanner   message={error}   onDismiss={onDismissError}   />}
+
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 space-y-4">
+
+        {/* ── Mode toggle (create only) ── */}
         {!editing && (
           <div className="grid grid-cols-2 gap-2 bg-gray-100 p-1 rounded-lg">
-            {(['custom', 'inventory_batch'] as ExpenseMode[]).map((mode) => (
+            {(['custom', 'inventory_batch'] as ExpenseMode[]).map(mode => (
               <button
                 key={mode}
                 type="button"
@@ -70,9 +215,9 @@ const ExpenseFormModal: React.FC<ExpenseFormModalProps> = ({
           </div>
         )}
 
-        {/* Batch-specific fields */}
+        {/* ── Existing-batch selector (create only) ── */}
         {isBatch && !editing && (
-          <div className="space-y-4">
+          <>
             <Field label="Existing Batch">
               <select
                 value={form.batchId}
@@ -81,9 +226,9 @@ const ExpenseFormModal: React.FC<ExpenseFormModalProps> = ({
                 className={inputCls}
               >
                 <option value="">Create a new batch from this expense</option>
-                {batches.map((batch) => (
+                {batches.map(batch => (
                   <option key={batch.id} value={batch.id}>
-                    {(batch.name || 'Unnamed batch')} - {batch.productName ?? 'Product'} - GH₵{batch.totalCost?.toFixed(2) ?? '0.00'}
+                    {batch.name || 'Unnamed batch'} – {batch.productName ?? 'Product'} – GH₵{batch.totalCost?.toFixed(2) ?? '0.00'}
                   </option>
                 ))}
               </select>
@@ -95,35 +240,24 @@ const ExpenseFormModal: React.FC<ExpenseFormModalProps> = ({
                 {selectedBatch.supplier ? ` from ${selectedBatch.supplier}` : ''}
               </div>
             )}
+          </>
+        )}
 
-            {!isExistingBatch && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Field label="Batch Name">
-                  <input
-                    type="text"
-                    value={form.batchName}
-                    onChange={onChange('batchName')}
-                    disabled={loading}
-                    className={inputCls}
-                    placeholder="e.g. May supplement delivery"
-                  />
-                </Field>
-
-                <Field label="Product">
-              <select
-                value={form.productId}
-                onChange={onChange('productId')}
+        {/* ── New-batch meta fields ── */}
+        {showBatchMeta && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Field label="Batch Name">
+              <input
+                type="text"
+                value={form.batchName}
+                onChange={onChange('batchName')}
                 disabled={loading}
                 className={inputCls}
-              >
-                <option value="">Select a product</option>
-                {products.map((p) => (
-                  <option key={p.id} value={p.id}>{p.name}</option>
-                ))}
-              </select>
-                </Field>
+                placeholder="e.g. May supplement delivery"
+              />
+            </Field>
 
-                <Field label="Supplier">
+            <Field label="Supplier">
               <input
                 type="text"
                 value={form.supplier}
@@ -132,34 +266,9 @@ const ExpenseFormModal: React.FC<ExpenseFormModalProps> = ({
                 className={inputCls}
                 placeholder="Supplier name"
               />
-                </Field>
+            </Field>
 
-                <Field label="Quantity">
-              <input
-                type="number"
-                min="1"
-                value={form.quantity}
-                onChange={onChange('quantity')}
-                disabled={loading}
-                className={inputCls}
-                placeholder="0"
-              />
-                </Field>
-
-                <Field label="Unit Cost">
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                value={form.unitCost}
-                onChange={onChange('unitCost')}
-                disabled={loading}
-                className={inputCls}
-                placeholder="0.00"
-              />
-                </Field>
-
-                <Field label="Expiry Date">
+            <Field label="Expiry Date">
               <input
                 type="date"
                 value={form.expiryDate}
@@ -167,22 +276,53 @@ const ExpenseFormModal: React.FC<ExpenseFormModalProps> = ({
                 disabled={loading}
                 className={inputCls}
               />
-                </Field>
-
-                <Field label="Batch Total">
-              <input
-                type="text"
-                value={`GH₵${batchAmount.toFixed(2)}`}
-                disabled
-                className={`${inputCls} text-gray-500`}
-              />
-                </Field>
-              </div>
-            )}
+            </Field>
           </div>
         )}
 
-        {/* Shared fields */}
+        {/* ── Multi-product rows ── */}
+        {showProductEditor && (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-gray-700">
+                {editing ? 'Batch Products' : 'Products'}
+              </span>
+              <button
+                type="button"
+                onClick={onAddBatchProduct}
+                disabled={loading}
+                className="text-xs text-orange-600 hover:text-orange-700 font-semibold
+                  disabled:opacity-40 transition-colors"
+              >
+                + Add product
+              </button>
+            </div>
+
+            <div className="space-y-2">
+              {form.batchProducts.map((row, i) => (
+                <ProductRow
+                  key={i}
+                  index={i}
+                  row={row}
+                  products={products}
+                  canRemove={form.batchProducts.length > 1}
+                  disabled={loading}
+                  onChange={(field, value) => onBatchProductChange(i, field, value)}
+                  onRemove={() => onRemoveBatchProduct(i)}
+                />
+              ))}
+            </div>
+
+            <div className="flex justify-end pt-1">
+              <span className="text-sm text-gray-500 mr-2">Batch Total:</span>
+              <span className="text-sm font-semibold text-gray-900">
+                GH₵{grandTotal.toFixed(2)}
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* ── Shared fields ── */}
         <Field label="Description">
           <input
             type="text"
@@ -231,9 +371,9 @@ const ExpenseFormModal: React.FC<ExpenseFormModalProps> = ({
           />
         </Field>
 
-        {/* Actions */}
+        {/* ── Actions ── */}
         <div className="flex gap-3 pt-2">
-          <Button variant="secondary" size="md" fullWidth onClick={onClose} disabled={loading}>
+          <Button variant="secondary" size="md" fullWidth onClick={onCancel} disabled={loading}>
             Cancel
           </Button>
           <Button
@@ -241,15 +381,98 @@ const ExpenseFormModal: React.FC<ExpenseFormModalProps> = ({
             color="orange"
             size="md"
             fullWidth
+            icon={<Save size={16} />}
             loading={loading}
             onClick={onSubmit}
           >
             {editing ? 'Update Expense' : 'Save Expense'}
           </Button>
         </div>
+
       </div>
-    </Modal>
+    </div>
   );
 };
 
-export default ExpenseFormModal;
+// ─── route wrapper ────────────────────────────────────────────────────────────
+
+import { useExpenses } from './useExpenses';
+
+const ExpenseFormRoute: React.FC = () => {
+  const navigate = useNavigate();
+  const { id } = useParams<{ id: string }>();
+  const isEdit = !!id;
+
+  const {
+    products, batches, saving, error, success, editing, form,
+    setError, setSuccess, setField, onModeChange,
+    openEdit, closeForm, handleSubmit,
+    setBatchProductField, addBatchProduct, removeBatchProduct,
+  } = useExpenses();
+
+  const [pageLoading, setPageLoading] = useState(isEdit);
+  const [loadError,   setLoadError]   = useState('');
+
+  useEffect(() => {
+    if (!isEdit || !id) return;
+
+    setPageLoading(true);
+    getExpense(id)
+      .then((expense) => openEdit(expense))
+      .catch((err) => setLoadError(err instanceof Error ? err.message : 'Failed to load expense.'))
+      .finally(() => setPageLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, isEdit]);
+
+  const handleCancel = () => {
+    closeForm();
+    navigate('/admin/expenses');
+  };
+
+  const handleSubmitAndRedirect = async () => {
+    const ok = await handleSubmit();
+    if (ok) {
+      navigate('/admin/expenses');
+    }
+  };
+
+  if (pageLoading) {
+    return (
+      <div className="py-10 text-center text-gray-400 text-sm">Loading expense...</div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="space-y-4 max-w-3xl">
+        <ErrorBanner message={loadError} />
+        <Button variant="secondary" onClick={() => navigate('/admin/expenses')}>
+          Back to Expenses
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <ExpenseFormPage
+      editing={editing}
+      form={form}
+      products={products}
+      batches={batches}
+      loading={saving}
+      error={error}
+      success={success}
+      onChange={setField}
+      onModeChange={onModeChange}
+      onBatchProductChange={setBatchProductField}
+      onAddBatchProduct={addBatchProduct}
+      onRemoveBatchProduct={removeBatchProduct}
+      onSubmit={handleSubmitAndRedirect}
+      onCancel={handleCancel}
+      onDismissError={() => setError('')}
+      onDismissSuccess={() => setSuccess('')}
+    />
+  );
+};
+
+export default ExpenseFormRoute;

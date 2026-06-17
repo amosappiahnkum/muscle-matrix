@@ -2,6 +2,8 @@ import {
   User, Product, InventoryEntry, Transaction,
   DailySalesReport, UserRole, TransactionPayload,
   Expense, ExpenseBatch, ExpensePayload,
+  BatchProductPayload,
+  ProductPayload,
 } from '../types';
 
 // ─── Config ───────────────────────────────────────────────────────────────────
@@ -131,12 +133,57 @@ export const deleteProduct = (productId: string): Promise<void> =>
 
 // ─── Inventory ────────────────────────────────────────────────────────────────
 
+// Add this to api.ts alongside your existing inventory functions
+// Add these to api.ts
+
+export const getProduct = (id: string): Promise<Product> =>
+  get(`/products/${id}`);
+
+export const updateProduct = (id: string, data: Partial<ProductPayload>): Promise<Product> =>
+  put(`/products/${id}`, data as unknown as Record<string, unknown>);
+
+export interface BatchUpdatePayload {
+  name?:       string | null;
+  supplier?:   string | null;
+  expiryDate?: string | null;
+  note?:       string | null;
+  products?:   { productId: string; quantity: number; unitCost: number }[];
+}
+
+
+
+export interface RestockLine {
+  productId:    string;
+  quantity:     number;
+  unitCost?:    number;
+  expiry_date?: string;
+}
+
+export interface RestockMultiplePayload {
+  products:          RestockLine[];
+  note?:             string;
+  expiry_date?:      string;
+  createBatch?:      boolean;
+  batchDescription?: string;
+  existingBatchId?:  string;
+  supplier?:         string;
+}
+
+export const restockMultiple = (payload: RestockMultiplePayload): Promise<any[]> =>
+  post('/inventory/restock-multiple', payload as unknown as Record<string, unknown>);
+
 /** Full stock movement log. Pass productId to filter by one product. */
 export const getInventoryLog = (productId?: string): Promise<InventoryEntry[]> =>
   get<InventoryEntry[]>(productId
     ? `/inventory?productId=${encodeURIComponent(productId)}`
     : '/inventory'
   );
+
+  // Add this to api.ts alongside your existing batch functions
+
+export const getBatch = (id: string): Promise<any> =>
+  get(`/batches/${id}`);
+
 
 /** Current stock levels for all products */
 export const getInventoryStock = (): Promise<{ productId: string; productName: string; quantity: number }[]> =>
@@ -165,6 +212,10 @@ export const adjustStock = (payload: {
 
 // ─── Transactions ─────────────────────────────────────────────────────────────
 
+
+export const getExpense = (id: string): Promise<Expense> =>
+  get(`/expenses/${id}`);
+
 export const getExpenses = (): Promise<Expense[]> =>
   get<Expense[]>('/expenses');
 
@@ -185,6 +236,18 @@ export const getBatches = (productId?: string): Promise<ExpenseBatch[]> =>
     ? `/batches?productId=${encodeURIComponent(productId)}`
     : '/batches'
   );
+export const updateBatch = (
+  id: string,
+  data: {
+    products?:  BatchProductPayload[];
+    name?:      string | null;
+    supplier?:  string | null;
+    expiryDate?: string | null;
+    note?:      string | null;
+  },
+): Promise<ExpenseBatch> =>
+  put<ExpenseBatch>(`/batches/${id}`, data as Record<string, unknown>);
+
 
 export const getTransactions = (): Promise<Transaction[]> =>
   get<Transaction[]>('/transactions');

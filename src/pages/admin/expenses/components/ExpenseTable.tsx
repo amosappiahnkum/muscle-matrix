@@ -1,34 +1,43 @@
 import React from 'react';
 import { format, parseISO } from 'date-fns';
-import { Edit2, Trash2 } from 'lucide-react';
+import { Edit2, Trash2, Eye } from 'lucide-react';
 import { Expense } from '@/types';
 import DataTable, { Column } from '@/components/common/DataTable';
 
 const typeLabel: Record<string, string> = {
-  custom:            'Custom',
-  inventory_batch:   'Batch',
+  custom:          'Custom',
+  inventory_batch: 'Batch',
 };
 
 interface ExpenseTableProps {
-  data:      Expense[];
-  loading:   boolean;
-  onEdit:    (expense: Expense) => void;
-  onDelete:  (expense: Expense) => void;
+  data:     Expense[];
+  loading:  boolean;
+  onView:   (expense: Expense) => void;
+  onEdit:   (expense: Expense) => void;
+  onDelete: (expense: Expense) => void;
 }
 
-const ExpenseTable: React.FC<ExpenseTableProps> = ({ data, loading, onEdit, onDelete }) => {
+const ExpenseTable: React.FC<ExpenseTableProps> = ({ data, loading, onView, onEdit, onDelete }) => {
   const columns: Column<Expense>[] = [
     {
       key: 'description',
       header: 'Expense',
-      render: (expense) => (
-        <div>
-          <p className="font-semibold text-gray-900">{expense.description}</p>
-          <p className="text-xs text-gray-400">
-            {expense.productName ?? expense.category ?? 'General'}
-          </p>
-        </div>
-      ),
+      render: (expense) =>
+        expense.type === 'inventory_batch' && expense.batch ? (
+          <div>
+            {/* Batch name is the primary label */}
+            <p className="font-semibold text-gray-900">
+              {expense.batch.name ?? 'Unnamed Batch'}
+            </p>
+            {/* Description is secondary */}
+            <p className="text-xs text-gray-400">{expense.description}</p>
+          </div>
+        ) : (
+          <div>
+            <p className="font-semibold text-gray-900">{expense.description}</p>
+            <p className="text-xs text-gray-400">{expense.category ?? 'General'}</p>
+          </div>
+        ),
     },
     {
       key: 'type',
@@ -45,15 +54,32 @@ const ExpenseTable: React.FC<ExpenseTableProps> = ({ data, loading, onEdit, onDe
     },
     {
       key: 'batch',
-      header: 'Batch',
+      header: 'Batch Details',
       render: (expense) =>
         expense.batch ? (
-          <div className="text-xs text-gray-500">
-            <p>{expense.batch.quantity} units @ GH₵{expense.batch.unitCost?.toFixed(2) ?? '0.00'}</p>
-            <p>{expense.batch.supplier ?? 'No supplier'}</p>
+          <div className="text-xs text-gray-500 space-y-0.5">
+            {/* Product lines */}
+            {expense.batch.products && expense.batch.products.length > 0 ? (
+              expense.batch.products.slice(0, 2).map((p) => (
+                <p key={p.productId}>
+                  {p.productName ?? 'Product'} × {p.quantity}
+                </p>
+              ))
+            ) : (
+              <p>{expense.batch.productName ?? 'Product'} × {expense.batch.quantity}</p>
+            )}
+            {/* Show "+N more" if more than 2 products */}
+            {expense.batch.products && expense.batch.products.length > 2 && (
+              <p className="text-orange-400 font-medium">
+                +{expense.batch.products.length - 2} more
+              </p>
+            )}
+            {expense.batch.supplier && (
+              <p className="text-gray-400">{expense.batch.supplier}</p>
+            )}
           </div>
         ) : (
-          <span className="text-xs text-gray-400">None</span>
+          <span className="text-xs text-gray-400">—</span>
         ),
     },
     {
@@ -81,6 +107,13 @@ const ExpenseTable: React.FC<ExpenseTableProps> = ({ data, loading, onEdit, onDe
       align: 'right',
       render: (expense) => (
         <div className="flex justify-end gap-1.5">
+          <button
+            onClick={() => onView(expense)}
+            title="View expense"
+            className="p-1.5 bg-orange-50 text-orange-500 rounded-lg border border-orange-100 hover:bg-orange-100 transition-colors"
+          >
+            <Eye size={14} />
+          </button>
           <button
             onClick={() => onEdit(expense)}
             title="Edit expense"

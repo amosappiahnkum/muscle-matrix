@@ -1,20 +1,26 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Plus, ReceiptText } from 'lucide-react';
+import { Expense } from '@/types';
 import { ErrorBanner, SuccessBanner } from '@/components/common/Banner';
 import Button from '@/components/common/Button';
 import { useExpenses } from './components/useExpenses';
 import ExpenseSummaryCards from './components/ExpenseSummaryCards';
 import ExpenseTableFilters from './components/ExpenseTableFilters';
 import ExpenseTable from './components/ExpenseTable';
-import ExpenseFormModal from './components/ExpenseFormModal';
+import ExpenseViewModal from './components/ExpenseViewModal';
 
 const ExpensesPage: React.FC = () => {
+  const navigate = useNavigate();
+
   const {
-    expenses, products, batches, filtered, totals,
-    loading, saving, error, success, search, typeFilter, formOpen, editing, form,
-    setSearch, setTypeFilter, setError, setSuccess, setField, onModeChange,
-    openCreate, openEdit, closeForm, handleSubmit, handleDelete,
+    expenses, filtered, totals,
+    loading, error, success, search, typeFilter,
+    setSearch, setTypeFilter, setError, setSuccess,
+    handleDelete,
   } = useExpenses();
+
+  const [viewing, setViewing] = useState<Expense | null>(null);
 
   return (
     <div className="space-y-6">
@@ -29,8 +35,12 @@ const ExpensesPage: React.FC = () => {
             <p className="text-gray-400 text-sm">{expenses.length} expense records</p>
           </div>
         </div>
-
-        <Button variant="primary" color="orange" icon={<Plus size={16} />} onClick={openCreate}>
+        <Button
+          variant="primary"
+          color="orange"
+          icon={<Plus size={16} />}
+          onClick={() => navigate('/admin/expenses/new')}
+        >
           Add Expense
         </Button>
       </div>
@@ -57,23 +67,16 @@ const ExpensesPage: React.FC = () => {
         <ExpenseTable
           data={filtered}
           loading={loading}
-          onEdit={openEdit}
+          onView={setViewing}
+          onEdit={(expense) => navigate(`/admin/expenses/${expense.id}/edit`)}
           onDelete={handleDelete}
         />
       </div>
 
-      {/* Create / edit modal */}
-      <ExpenseFormModal
-        open={formOpen}
-        editing={editing}
-        form={form}
-        products={products}
-        batches={batches}
-        loading={saving}
-        onChange={setField}
-        onModeChange={onModeChange}
-        onClose={closeForm}
-        onSubmit={handleSubmit}
+      {/* View modal */}
+      <ExpenseViewModal
+        expense={viewing}
+        onClose={() => setViewing(null)}
       />
     </div>
   );
