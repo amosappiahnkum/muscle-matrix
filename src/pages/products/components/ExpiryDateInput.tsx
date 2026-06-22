@@ -1,72 +1,68 @@
 import React from 'react';
+import { DatePicker, Typography } from 'antd';
+import dayjs, { Dayjs } from 'dayjs';
 
-export const inputCls = `w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl
-  text-gray-900 placeholder-gray-400 text-sm
-  focus:outline-none focus:bg-white focus:border-orange-400 focus:ring-2 focus:ring-orange-100
-  transition-all disabled:opacity-50`;
+const { Text } = Typography;
 
 interface ExpiryDateInputProps {
   value:      string;        // YYYY-MM-DD or ''
   onChange:   (val: string) => void;
   disabled?:  boolean;
-  isEditing?: boolean;       // skip min-date enforcement when editing an existing product
+  isEditing?: boolean;
 }
 
-/**
- * Expiry date field with colour-coded hint text.
- *
- * Hint is computed from the raw date string (not from Product.isExpired /
- * Product.isExpiringSoon) because those flags only exist on saved records,
- * not on transient form state.
- *
- * min-date is only applied when creating a new product so that editing a
- * product that already has a past expiry date isn't blocked.
- */
 const ExpiryDateInput: React.FC<ExpiryDateInputProps> = ({
   value,
   onChange,
   disabled  = false,
   isEditing = false,
 }) => {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const todayStr = today.toISOString().split('T')[0];
+  const today = dayjs().startOf('day');
 
   const daysRemaining = value
-    ? Math.ceil((new Date(value).getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+    ? dayjs(value).startOf('day').diff(today, 'day')
     : null;
 
   const expired      = daysRemaining !== null && daysRemaining < 0;
   const expiringSoon = daysRemaining !== null && daysRemaining >= 0 && daysRemaining <= 30;
 
+  const handleChange = (date: Dayjs | null) => {
+    onChange(date ? date.format('YYYY-MM-DD') : '');
+  };
+
+  const disabledDate = (date: Dayjs) =>
+    !isEditing ? date.isBefore(today, 'day') : false;
+
+  // Derive status for Ant Design's built-in border colouring
+  const status = expired ? 'error' : expiringSoon ? 'warning' : undefined;
+
+  const hint =
+    daysRemaining === null ? null :
+    expired      ? { color: 'danger'  as const, text: '⚠ This product has already expired' } :
+    expiringSoon ? { color: 'warning' as const, text: `⚠ Expires in ${daysRemaining} day${daysRemaining !== 1 ? 's' : ''}` } :
+                   { color: 'success' as const, text: `✓ Expires in ${daysRemaining} day${daysRemaining !== 1 ? 's' : ''}` };
+
   return (
     <div>
-      <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-        Expiry Date
-        <span className="text-gray-400 font-normal text-xs ml-1">(optional)</span>
-      </label>
-
-      <input
-        type="date"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
+      <DatePicker
+        value={value ? dayjs(value) : null}
+        onChange={handleChange}
         disabled={disabled}
-        min={!isEditing ? todayStr : undefined}
-        className={`${inputCls} ${expired ? 'border-red-400 focus:border-red-400 focus:ring-red-100' : ''}`}
+        disabledDate={!isEditing ? disabledDate : undefined}
+        status={status}
+        format="YYYY-MM-DD"
+        placeholder="Select expiry date"
+        size="large"
+        style={{ width: '100%' }}
       />
 
-      {daysRemaining !== null && (
-        expired ? (
-          <p className="text-xs text-red-500 mt-1">⚠ This product has already expired</p>
-        ) : expiringSoon ? (
-          <p className="text-xs text-yellow-600 mt-1">
-            ⚠ Expires in {daysRemaining} day{daysRemaining !== 1 ? 's' : ''}
-          </p>
-        ) : (
-          <p className="text-xs text-green-600 mt-1">
-            ✓ Expires in {daysRemaining} day{daysRemaining !== 1 ? 's' : ''}
-          </p>
-        )
+      {hint && (
+        <Text
+          type={hint.color}
+          style={{ display: 'block', fontSize: 12, marginTop: 4 }}
+        >
+          {hint.text}
+        </Text>
       )}
     </div>
   );

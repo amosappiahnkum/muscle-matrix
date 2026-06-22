@@ -21,6 +21,8 @@ import SalesReport            from '../pages/admin/salesReport/index';
 import TransactionHistory     from '../pages/admin/transactions/index';
 import BackupRestore          from '../pages/admin/backup/BackupRestore';
 import ChangeAdminCredentials from '../pages/admin/ChangeAdminCredentials';
+import SuppliersPage          from '../pages/admin/suppliers/index';
+import CategoriesPage         from '../pages/admin/categories/index';
 
 const AdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <ProtectedRoute requiredRole="admin">
@@ -46,16 +48,19 @@ const AppRouter: React.FC = () => (
           }
         />
 
-        <Route path="/admin" element={<AdminRoute><OverviewTab /></AdminRoute>} />
+        {/* ── Admin ────────────────────────────────────────────────── */}
+        <Route path="/admin"             element={<AdminRoute><OverviewTab /></AdminRoute>} />
         <Route path="/admin/employees"   element={<AdminRoute><EmployeeManagement /></AdminRoute>} />
         <Route path="/admin/products"    element={<AdminRoute><ProductManagement /></AdminRoute>} />
         <Route path="/admin/inventory"   element={<AdminRoute><InventoryLog /></AdminRoute>} />
         <Route path="/admin/inventory/add-stock" element={<AdminRoute><AddStockPage /></AdminRoute>} />
         <Route path="/admin/products/:id" element={<AdminRoute><ProductDetailPage /></AdminRoute>} />
         <Route path="/admin/batches/:id"  element={<AdminRoute><BatchDetailPage /></AdminRoute>} />
-        <Route path="/admin/expenses"    element={<AdminRoute><ExpensesPage /></AdminRoute>} />
+        <Route path="/admin/expenses"         element={<AdminRoute><ExpensesPage /></AdminRoute>} />
         <Route path="/admin/expenses/new"      element={<AdminRoute><ExpenseFormRoute /></AdminRoute>} />
         <Route path="/admin/expenses/:id/edit" element={<AdminRoute><ExpenseFormRoute /></AdminRoute>} />
+        <Route path="/admin/suppliers"   element={<AdminRoute><SuppliersPage /></AdminRoute>} />
+        <Route path="/admin/categories"  element={<AdminRoute><CategoriesPage /></AdminRoute>} />
         <Route path="/admin/reports"     element={<AdminRoute><SalesReport /></AdminRoute>} />
         <Route path="/admin/transactions" element={<AdminRoute><TransactionHistory /></AdminRoute>} />
         <Route path="/admin/backup"      element={<AdminRoute><BackupRestore /></AdminRoute>} />

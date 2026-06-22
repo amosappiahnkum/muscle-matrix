@@ -188,6 +188,11 @@ export interface ExpensePayload {
   amount?:      number;
   category?:    string | null;
   note?:        string | null;
+  additionalExpenses?: {          // ← add this
+    category:    string;
+    description: string | null;
+    amount:      number;
+  }[];
 }
 
 // ─── Sales & Transactions ─────────────────────────────────────────────────────

@@ -133,9 +133,6 @@ export const deleteProduct = (productId: string): Promise<void> =>
 
 // ─── Inventory ────────────────────────────────────────────────────────────────
 
-// Add this to api.ts alongside your existing inventory functions
-// Add these to api.ts
-
 export const getProduct = (id: string): Promise<Product> =>
   get(`/products/${id}`);
 
@@ -149,8 +146,6 @@ export interface BatchUpdatePayload {
   note?:       string | null;
   products?:   { productId: string; quantity: number; unitCost: number }[];
 }
-
-
 
 export interface RestockLine {
   productId:    string;
@@ -172,37 +167,30 @@ export interface RestockMultiplePayload {
 export const restockMultiple = (payload: RestockMultiplePayload): Promise<any[]> =>
   post('/inventory/restock-multiple', payload as unknown as Record<string, unknown>);
 
-/** Full stock movement log. Pass productId to filter by one product. */
 export const getInventoryLog = (productId?: string): Promise<InventoryEntry[]> =>
   get<InventoryEntry[]>(productId
     ? `/inventory?productId=${encodeURIComponent(productId)}`
     : '/inventory'
   );
 
-  // Add this to api.ts alongside your existing batch functions
-
 export const getBatch = (id: string): Promise<any> =>
   get(`/batches/${id}`);
 
-
-/** Current stock levels for all products */
 export const getInventoryStock = (): Promise<{ productId: string; productName: string; quantity: number }[]> =>
   get('/inventory/stock');
 
-/** Add stock — creates a 'restock' movement */
 export const addStock = (payload: {
-  productId: string;
-  quantity:  number;
-  note?:     string;
+  productId:    string;
+  quantity:     number;
+  note?:        string;
   expiry_date?: string;
   createBatch?: boolean;
-  batchName?: string;
-  unitCost?: number;
-  supplier?: string;
+  batchName?:   string;
+  unitCost?:    number;
+  supplier?:    string;
 }): Promise<InventoryEntry> =>
   post<InventoryEntry>('/inventory/restock', payload as Record<string, unknown>);
 
-/** Manual adjustment — positive adds, negative removes */
 export const adjustStock = (payload: {
   productId: string;
   quantity:  number;
@@ -210,8 +198,7 @@ export const adjustStock = (payload: {
 }): Promise<InventoryEntry> =>
   post<InventoryEntry>('/inventory/adjust', payload as Record<string, unknown>);
 
-// ─── Transactions ─────────────────────────────────────────────────────────────
-
+// ─── Expenses ─────────────────────────────────────────────────────────────────
 
 export const getExpense = (id: string): Promise<Expense> =>
   get(`/expenses/${id}`);
@@ -219,35 +206,39 @@ export const getExpense = (id: string): Promise<Expense> =>
 export const getExpenses = (): Promise<Expense[]> =>
   get<Expense[]>('/expenses');
 
+export const getTodayExpenses = (): Promise<Expense[]> =>
+  get<Expense[]>('/expenses?today=1');
+
 export const saveExpense = (expense: ExpensePayload): Promise<Expense> =>
   post<Expense>('/expenses', expense as unknown as Record<string, unknown>);
 
-export const updateExpense = (
-  id: string,
-  expense: Partial<ExpensePayload>,
-): Promise<Expense> =>
+export const updateExpense = (id: string, expense: Partial<ExpensePayload>): Promise<Expense> =>
   put<Expense>(`/expenses/${id}`, expense as Record<string, unknown>);
 
 export const deleteExpense = (id: string): Promise<void> =>
   del(`/expenses/${id}`);
+
+// ─── Batches ──────────────────────────────────────────────────────────────────
 
 export const getBatches = (productId?: string): Promise<ExpenseBatch[]> =>
   get<ExpenseBatch[]>(productId
     ? `/batches?productId=${encodeURIComponent(productId)}`
     : '/batches'
   );
+
 export const updateBatch = (
   id: string,
   data: {
-    products?:  BatchProductPayload[];
-    name?:      string | null;
-    supplier?:  string | null;
+    products?:   BatchProductPayload[];
+    name?:       string | null;
+    supplier?:   string | null;
     expiryDate?: string | null;
-    note?:      string | null;
+    note?:       string | null;
   },
 ): Promise<ExpenseBatch> =>
   put<ExpenseBatch>(`/batches/${id}`, data as Record<string, unknown>);
 
+// ─── Transactions ─────────────────────────────────────────────────────────────
 
 export const getTransactions = (): Promise<Transaction[]> =>
   get<Transaction[]>('/transactions');
@@ -261,9 +252,7 @@ export const getTransactionsByType = (type: 'wholesale' | 'retail'): Promise<Tra
 export const getTransactionById = (id: string): Promise<Transaction> =>
   get<Transaction>(`/transactions/${id}`);
 
-export const saveTransaction = (
-  transaction: TransactionPayload,
-): Promise<Transaction> =>
+export const saveTransaction = (transaction: TransactionPayload): Promise<Transaction> =>
   post<Transaction>('/transactions', transaction as unknown as Record<string, unknown>);
 
 export const deleteTransaction = (id: string): Promise<void> =>
@@ -281,3 +270,77 @@ export const exportDatabase = async (): Promise<string> => {
   const data = await get<Record<string, unknown>>('/reports/export');
   return JSON.stringify(data, null, 2);
 };
+
+// ─── Categories ───────────────────────────────────────────────────────────────
+
+export interface Category {
+  id:          number;
+  name:        string;
+  description: string | null;
+  createdBy:   string | null;
+  createdAt:   string | null;
+  updatedAt:   string | null;
+}
+
+export interface CategoryPayload {
+  name:         string;
+  description?: string | null;
+}
+
+export const getCategories = (): Promise<Category[]> =>
+  get<Category[]>('/categories');
+
+export const searchCategories = (query: string): Promise<Category[]> =>
+  get<Category[]>(`/categories?search=${encodeURIComponent(query)}`);
+
+export const getCategoryById = (id: number): Promise<Category> =>
+  get<Category>(`/categories/${id}`);
+
+export const saveCategory = (category: Partial<CategoryPayload> & { id?: number }): Promise<Category> => {
+  if (category.id) return put<Category>(`/categories/${category.id}`, category as Record<string, unknown>);
+  return post<Category>('/categories', category as Record<string, unknown>);
+};
+
+export const deleteCategory = (id: number): Promise<void> =>
+  del(`/categories/${id}`);
+
+// ─── Suppliers ────────────────────────────────────────────────────────────────
+
+export interface Supplier {
+  id:            number;
+  name:          string;
+  contactPerson: string | null;
+  phone:         string | null;
+  email:         string | null;
+  address:       string | null;
+  note:          string | null;
+  createdBy:     string | null;
+  createdAt:     string | null;
+  updatedAt:     string | null;
+}
+
+export interface SupplierPayload {
+  name:           string;
+  contactPerson?: string | null;
+  phone?:         string | null;
+  email?:         string | null;
+  address?:       string | null;
+  note?:          string | null;
+}
+
+export const getSuppliers = (): Promise<Supplier[]> =>
+  get<Supplier[]>('/suppliers');
+
+export const searchSuppliers = (query: string): Promise<Supplier[]> =>
+  get<Supplier[]>(`/suppliers?search=${encodeURIComponent(query)}`);
+
+export const getSupplierById = (id: number): Promise<Supplier> =>
+  get<Supplier>(`/suppliers/${id}`);
+
+export const saveSupplier = (supplier: Partial<SupplierPayload> & { id?: number }): Promise<Supplier> => {
+  if (supplier.id) return put<Supplier>(`/suppliers/${supplier.id}`, supplier as Record<string, unknown>);
+  return post<Supplier>('/suppliers', supplier as Record<string, unknown>);
+};
+
+export const deleteSupplier = (id: number): Promise<void> =>
+  del(`/suppliers/${id}`);

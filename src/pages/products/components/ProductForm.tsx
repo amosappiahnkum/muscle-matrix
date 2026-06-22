@@ -1,15 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
+import { Form, Input, InputNumber, Row, Col } from 'antd';
 import { Product } from '@/types';
 import Modal from '@/components/common/Modal';
 import { ErrorBanner } from '@/components/common/Banner';
 import Button from '@/components/common/Button';
-import ExpiryDateInput, { inputCls } from './ExpiryDateInput';
+import ExpiryDateInput from './ExpiryDateInput';
 
-// ─── Form state type (all strings — inputs are uncontrolled text) ─────────────
+// ─── Form state type ──────────────────────────────────────────────────────────
 export interface ProductFormData {
   name:           string;
   quantity:       string;
-  expiryDate:     string;   
+  expiryDate:     string;
   costPrice:      string;
   wholesalePrice: string;
   retailPrice:    string;
@@ -38,17 +39,15 @@ interface ProductFormProps {
 const ProductForm: React.FC<ProductFormProps> = ({
   open, editing, loading, error, onClose, onSubmit,
 }) => {
-  const [form, setForm] = useState<ProductFormData>(defaultForm);
+  const [form] = Form.useForm<ProductFormData>();
 
-  // Pre-fill when opening the edit modal.
-  // Product.expiryDate is camelCase per the type definition.
+  // Pre-fill when opening the edit modal
   useEffect(() => {
-    setForm(
+    form.setFieldsValue(
       editing
         ? {
             name:           editing.name,
             quantity:       editing.quantity.toString(),
-            // Normalise to YYYY-MM-DD so <input type="date"> renders correctly
             expiryDate:     editing.expiryDate
                               ? new Date(editing.expiryDate).toISOString().split('T')[0]
                               : '',
@@ -58,12 +57,20 @@ const ProductForm: React.FC<ProductFormProps> = ({
           }
         : defaultForm
     );
-  }, [editing, open]);
+  }, [editing, open, form]);
 
-  const set =
-    (key: keyof ProductFormData) =>
-    (e: React.ChangeEvent<HTMLInputElement>) =>
-      setForm((f) => ({ ...f, [key]: e.target.value }));
+  const expiryDate = Form.useWatch('expiryDate', form) ?? '';
+
+  const handleSubmit = () => {
+    const values = form.getFieldsValue();
+    onSubmit(values);
+  };
+
+  const priceFields: { key: keyof ProductFormData; label: string }[] = [
+    { key: 'costPrice',      label: 'Cost Price (GH₵)' },
+    { key: 'wholesalePrice', label: 'Wholesale Price (GH₵)' },
+    { key: 'retailPrice',    label: 'Retail Price (GH₵)' },
+  ];
 
   return (
     <Modal
@@ -72,100 +79,71 @@ const ProductForm: React.FC<ProductFormProps> = ({
       title={editing ? 'Edit Product' : 'Add New Product'}
       persistent={loading}
     >
-      <div className="space-y-4">
-        {error && <ErrorBanner message={error} />}
+      <Form form={form} layout="vertical" requiredMark={false}>
+        {error && (
+          <div style={{ marginBottom: 16 }}>
+            <ErrorBanner message={error} />
+          </div>
+        )}
 
         {/* Product name */}
-        <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-            Product Name
-          </label>
-          <input
-            type="text"
-            value={form.name}
-            onChange={set('name')}
+        <Form.Item label="Product Name" name="name">
+          <Input
             disabled={loading}
             placeholder="Enter product name"
-            className={inputCls}
+            size="large"
           />
-        </div>
+        </Form.Item>
 
         {/* Quantity */}
-        <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-            Quantity Available
-          </label>
-          <input
-            type="number"
-            min="0"
-            value={form.quantity}
-            onChange={set('quantity')}
+        <Form.Item label="Quantity Available" name="quantity">
+          <InputNumber
+            min={0}
             disabled={loading}
             placeholder="Enter quantity"
-            className={inputCls}
+            size="large"
+            style={{ width: '100%' }}
           />
-        </div>
+        </Form.Item>
 
         {/* Prices */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-              Cost Price (GH₵)
-            </label>
-            <input
-              type="number"
-              min="0"
-              step="0.01"
-              value={form.costPrice}
-              onChange={set('costPrice')}
-              disabled={loading}
-              placeholder="0.00"
-              className={inputCls}
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-              Wholesale Price (GH₵)
-            </label>
-            <input
-              type="number"
-              min="0"
-              step="0.01"
-              value={form.wholesalePrice}
-              onChange={set('wholesalePrice')}
-              disabled={loading}
-              placeholder="0.00"
-              className={inputCls}
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-              Retail Price (GH₵)
-            </label>
-            <input
-              type="number"
-              min="0"
-              step="0.01"
-              value={form.retailPrice}
-              onChange={set('retailPrice')}
-              disabled={loading}
-              placeholder="0.00"
-              className={inputCls}
-            />
-          </div>
-        </div>
+        <Row gutter={16}>
+          {priceFields.map(({ key, label }) => (
+            <Col xs={24} sm={8} key={key}>
+              <Form.Item label={label} name={key}>
+                <InputNumber
+                  min={0}
+                  step={0.01}
+                  precision={2}
+                  disabled={loading}
+                  placeholder="0.00"
+                  size="large"
+                  style={{ width: '100%' }}
+                />
+              </Form.Item>
+            </Col>
+          ))}
+        </Row>
 
         {/* Expiry date */}
-        <ExpiryDateInput
-          value={form.expiryDate}
-          onChange={(val) => setForm((f) => ({ ...f, expiryDate: val }))}
-          disabled={loading}
-          isEditing={!!editing}
-        />
+        <Form.Item name="expiryDate">
+          <ExpiryDateInput
+            value={expiryDate}
+            onChange={(val) => form.setFieldValue('expiryDate', val)}
+            disabled={loading}
+            isEditing={!!editing}
+          />
+        </Form.Item>
 
         {/* Actions */}
-        <div className="flex gap-3 pt-2">
-          <Button variant="secondary" size="lg" fullWidth onClick={onClose} disabled={loading}>
+        <div style={{ display: 'flex', gap: 12, paddingTop: 8 }}>
+          <Button
+            variant="secondary"
+            size="lg"
+            fullWidth
+            onClick={onClose}
+            disabled={loading}
+          >
             Cancel
           </Button>
           <Button
@@ -174,12 +152,12 @@ const ProductForm: React.FC<ProductFormProps> = ({
             size="lg"
             fullWidth
             loading={loading}
-            onClick={() => onSubmit(form)}
+            onClick={handleSubmit}
           >
             {editing ? 'Update Product' : 'Add Product'}
           </Button>
         </div>
-      </div>
+      </Form>
     </Modal>
   );
 };

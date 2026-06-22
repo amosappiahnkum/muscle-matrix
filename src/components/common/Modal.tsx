@@ -1,5 +1,5 @@
-import React, { useEffect } from 'react';
-import { X } from 'lucide-react';
+import React from 'react';
+import { Modal as AntModal } from 'antd';
 
 interface ModalProps {
   open:        boolean;
@@ -15,15 +15,15 @@ interface ModalProps {
   persistent?: boolean;
 }
 
-const maxWidthMap = {
-  sm:  'max-w-sm',
-  md:  'max-w-md',
-  lg:  'max-w-lg',
-  xl:  'max-w-xl',
-  '2xl': 'max-w-2xl',
-  '3xl': 'max-w-3xl',
-  '4xl': 'max-w-4xl',
-  '5xl': 'max-w-5xl',
+const maxWidthPxMap: Record<NonNullable<ModalProps['maxWidth']>, number> = {
+  sm:    384,
+  md:    448,
+  lg:    512,
+  xl:    576,
+  '2xl': 672,
+  '3xl': 768,
+  '4xl': 896,
+  '5xl': 1024,
 };
 
 const Modal: React.FC<ModalProps> = ({
@@ -33,88 +33,104 @@ const Modal: React.FC<ModalProps> = ({
   subtitle,
   icon,
   children,
-  maxWidth = 'md',
+  maxWidth  = 'md',
   aside,
   persistent = false,
 }) => {
-  // Close on Escape
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !persistent) onClose?.();
-    };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [open, onClose, persistent]);
-
-  if (!open) return null;
-
   const isLandscape = !!aside;
+  const widthPx = isLandscape
+    ? Math.max(maxWidthPxMap[maxWidth], maxWidthPxMap['4xl'])
+    : maxWidthPxMap[maxWidth];
 
-  // Landscape modals default to a wider frame (4xl) unless maxWidth
-  // is explicitly set wider than that.
-  const landscapeWidth = ['4xl', '5xl'].includes(maxWidth)
-    ? maxWidthMap[maxWidth]
-    : maxWidthMap['4xl'];
-
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
-      onClick={() => !persistent && onClose?.()}
-    >
-      <div
-        className={`w-full ${isLandscape ? landscapeWidth : maxWidthMap[maxWidth]}
-          bg-white rounded-2xl border border-gray-200 shadow-2xl overflow-hidden
-          flex flex-col md:flex-row`}
-        style={{ maxHeight: '90vh' }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* ── Aside panel (landscape left column) ── */}
-        {aside && (
-          <div className="hidden md:flex flex-col justify-between w-64 flex-shrink-0
-            bg-gradient-to-b from-orange-500 to-orange-600 p-8 text-white">
-            {aside}
+  // Custom title node — icon + title + subtitle
+  const titleNode = (title || icon) ? (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+      {icon && (
+        <div style={{
+          background: '#fff7ed',
+          border: '1px solid #fed7aa',
+          borderRadius: 12,
+          padding: '6px 8px',
+          display: 'flex',
+          alignItems: 'center',
+        }}>
+          {icon}
+        </div>
+      )}
+      <div>
+        {title && (
+          <div style={{ fontSize: 15, fontWeight: 600, color: '#111827', lineHeight: 1.4 }}>
+            {title}
           </div>
         )}
-
-        {/* ── Main column ── */}
-        <div className="flex flex-col flex-1 min-h-0">
-          {/* Header */}
-          {(title || onClose) && (
-            <div className="flex items-start justify-between px-6 py-5 border-b border-gray-100 flex-shrink-0">
-              <div className="flex items-center gap-3">
-                {icon && (
-                  <div className="bg-orange-50 border border-orange-100 p-2 rounded-xl">
-                    {icon}
-                  </div>
-                )}
-                <div>
-                  {title && (
-                    <h2 className="text-base font-semibold text-gray-900">{title}</h2>
-                  )}
-                  {subtitle && (
-                    <p className="text-xs text-gray-400 mt-0.5">{subtitle}</p>
-                  )}
-                </div>
-              </div>
-              {onClose && !persistent && (
-                <button
-                  onClick={onClose}
-                  className="p-1.5 rounded-lg text-gray-400
-                    hover:text-gray-700 hover:bg-gray-100
-                    transition-colors duration-150 ml-4 flex-shrink-0"
-                >
-                  <X size={18} />
-                </button>
-              )}
-            </div>
-          )}
-
-          {/* Body — scrollable */}
-          <div className="p-6 overflow-y-auto flex-1">{children}</div>
-        </div>
+        {subtitle && (
+          <div style={{ fontSize: 12, color: '#9ca3af', marginTop: 2 }}>
+            {subtitle}
+          </div>
+        )}
       </div>
     </div>
+  ) : null;
+
+  return (
+    <AntModal
+      open={open}
+      onCancel={persistent ? undefined : onClose}
+      width={widthPx}
+      title={titleNode}
+      footer={null}
+      closable={!persistent && !!onClose}
+      maskClosable={!persistent}
+      keyboard={!persistent}
+      styles={{
+        content: {
+          padding: 0,
+          borderRadius: 16,
+          overflow: 'hidden',
+          maxHeight: '90vh',
+          display: 'flex',
+          flexDirection: 'column',
+        },
+        header: {
+          padding: '20px 24px',
+          borderBottom: '1px solid #f3f4f6',
+          marginBottom: 0,
+          flexShrink: 0,
+        },
+        body: {
+          display: 'flex',
+          flex: 1,
+          minHeight: 0,
+          overflow: 'hidden',
+          padding: 0,
+        },
+        mask: {
+          backdropFilter: 'blur(4px)',
+          background: 'rgba(0,0,0,0.4)',
+        },
+      }}
+    >
+      {/* Aside panel */}
+      {aside && (
+        <div style={{
+          width: 256,
+          flexShrink: 0,
+          // background: 'linear-gradient(to bottom, #f97316, #ea6c0a)',
+          padding: '32px',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'space-between',
+          color: '#fff',
+        }}>
+          {aside}
+        </div>
+      )}
+
+      {/* Main body — scrollable */}
+      <div style={{ flex: 1, overflowY: 'auto', padding: 24 }}>
+        {children}
+      </div>
+    </AntModal>
   );
 };
 

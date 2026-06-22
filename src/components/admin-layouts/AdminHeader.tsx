@@ -13,6 +13,8 @@ const tabLabels: Record<TabType, { title: string; subtitle: string }> = {
   overview:     { title: 'Dashboard Overview',        subtitle: 'Your business at a glance'         },
   employees:    { title: 'Employee Management',        subtitle: 'Manage staff accounts and roles'   },
   products:     { title: 'Product Management',         subtitle: 'Add, edit and manage products'     },
+  suppliers:    { title: 'Supplier Management',        subtitle: 'Manage your suppliers and contacts' },
+  categories:   { title: 'Category Management',        subtitle: 'Organize products into categories' },
   inventory:    { title: 'Inventory Log',              subtitle: 'Track all stock movements'         },
   expenses:     { title: 'Expenses',                   subtitle: 'Track custom and batch expenses'   },
   reports:      { title: 'Sales Reports',              subtitle: 'Revenue and performance reports'   },

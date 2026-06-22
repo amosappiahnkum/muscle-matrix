@@ -1,13 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronUp, Plus, X } from 'lucide-react';
+import {
+  Select, InputNumber, DatePicker, Input,
+  Checkbox, Typography, Divider,
+} from 'antd';
+import dayjs, { Dayjs } from 'dayjs';
 import { Product } from '@/types';
 import Button from '@/components/common/Button';
 import { ErrorBanner } from '@/components/common/Banner';
 import { StockLevel } from './StockLevel';
 
+const { Text } = Typography;
+
 interface Batch {
-  id:   string;
-  name?: string | null;
+  id:        string;
+  name?:     string | null;
   batchCode: string;
 }
 
@@ -30,22 +37,16 @@ interface AddStockFormProps {
   error:          string;
   preselectedId?: string;
   onClose:        () => void;
-  /** Show the internal collapsible header (default true). Set false when used on a dedicated page. */
   showHeader?:    boolean;
   onSubmit: (payload: {
     products: { productId: string; quantity: number; unitCost?: number; expiry_date?: string }[];
-    note: string;
-    createBatch: boolean;
+    note:             string;
+    createBatch:      boolean;
     batchDescription: string;
-    existingBatchId: string;
-    supplier: string;
-    expiry_date: string;
+    existingBatchId:  string;
+    supplier:         string;
   }) => void;
 }
-
-const inputCls = `w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg
-  text-sm focus:outline-none focus:bg-white focus:border-orange-400
-  focus:ring-2 focus:ring-orange-100 transition-all`;
 
 export const AddStockForm: React.FC<AddStockFormProps> = ({
   open,
@@ -58,24 +59,20 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({
   showHeader = true,
   onSubmit,
 }) => {
-  const [lines, setLines]               = useState<ProductLine[]>([emptyLine()]);
-  const [note, setNote]                 = useState('');
-  const [expiryDate, setExpiryDate]     = useState('');
-  const [createBatch, setCreateBatch]   = useState(false);
+  const [lines, setLines]                       = useState<ProductLine[]>([emptyLine()]);
+  const [note, setNote]                         = useState('');
+  const [createBatch, setCreateBatch]           = useState(false);
   const [batchDescription, setBatchDescription] = useState('');
-  const [existingBatchId, setExistingBatchId]    = useState('');
-  const [supplier, setSupplier]         = useState('');
+  const [existingBatchId, setExistingBatchId]   = useState('');
+  const [supplier, setSupplier]                 = useState('');
 
   // Reset form when opened
   useEffect(() => {
     if (!open) return;
-
     const first = emptyLine();
     if (preselectedId) first.productId = preselectedId;
-
     setLines([first]);
     setNote('');
-    setExpiryDate('');
     setCreateBatch(false);
     setBatchDescription('');
     setExistingBatchId('');
@@ -87,18 +84,13 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({
   const updateLine = (index: number, field: keyof ProductLine, value: string) =>
     setLines(cur => cur.map((l, i) => i === index ? { ...l, [field]: value } : l));
 
-  const addLine = () => setLines(cur => [...cur, emptyLine()]);
+  const addLine    = () => setLines(cur => [...cur, emptyLine()]);
   const removeLine = (index: number) => setLines(cur => cur.filter((_, i) => i !== index));
-
-  const handleCreateBatchToggle = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setCreateBatch(e.target.checked);
-    setExistingBatchId('');
-  };
 
   const grandTotal = lines.reduce((sum, l) => {
     const qty  = Number.parseInt(l.quantity || '0', 10);
     const cost = Number(l.unitCost || '0');
-    return sum + (Number.isNaN(qty) ? 0 : qty) * (Number.isNaN(cost) ? 0 : cost);
+    return sum + (isNaN(qty) ? 0 : qty) * (isNaN(cost) ? 0 : cost);
   }, 0);
 
   const handleSubmit = () => {
@@ -114,19 +106,47 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({
       batchDescription,
       existingBatchId,
       supplier,
-      expiry_date: expiryDate,
     });
   };
 
+  // Build Select options with search support
+  const productOptions = products.map(p => ({
+    value: p.id,
+    label: `${p.name} — stock: ${p.quantity}`,
+    product: p,
+  }));
+
   return (
-    <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+    <div style={{
+      background: '#fff',
+      borderRadius: 12,
+      border: '1px solid #e5e7eb',
+      boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+      overflow: 'hidden',
+    }}>
       {/* Header */}
       {showHeader && (
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 bg-gray-50">
-          <h3 className="text-sm font-semibold text-gray-800">Add Stock</h3>
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '12px 20px',
+          borderBottom: '1px solid #f3f4f6',
+          background: '#f9fafb',
+        }}>
+          <Text strong style={{ fontSize: 14, color: '#1f2937' }}>Add Stock</Text>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-200 transition-colors"
+            style={{
+              padding: '4px 6px',
+              borderRadius: 8,
+              border: 'none',
+              background: 'transparent',
+              color: '#9ca3af',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+            }}
             title="Collapse"
           >
             <ChevronUp size={16} />
@@ -134,214 +154,242 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({
         </div>
       )}
 
-      <div className="p-5 space-y-5">
+      <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 20 }}>
         {error && <ErrorBanner message={error} />}
 
-        {/* Product lines */}
-        <div className="space-y-2">
-          <div className="grid grid-cols-12 gap-2 text-xs font-semibold text-gray-500 px-1">
-            <span className="col-span-4">Product</span>
-            <span className="col-span-2 text-center">Qty</span>
-            <span className="col-span-2 text-right">Unit Cost</span>
-            <span className="col-span-2">Expiry</span>
-            <span className="col-span-2 text-right">Line Total</span>
-          </div>
+        {/* Column headers */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: '3fr 1fr 1fr 1.2fr 1.2fr auto',
+          gap: 8,
+          padding: '0 4px',
+        }}>
+          {['Product', 'Qty', 'Unit Cost', 'Expiry', 'Line Total', ''].map((h, i) => (
+            <Text key={i} style={{ fontSize: 11, fontWeight: 600, color: '#6b7280', textAlign: i >= 2 ? 'right' : 'left' }}>
+              {h}
+            </Text>
+          ))}
+        </div>
 
+        {/* Product lines */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {lines.map((line, i) => {
-            const selected = products.find(p => p.id === line.productId);
-            const qty  = Number.parseInt(line.quantity || '0', 10);
-            const cost = Number(line.unitCost || '0');
-            const lineTotal = (Number.isNaN(qty) ? 0 : qty) * (Number.isNaN(cost) ? 0 : cost);
+            const selected  = products.find(p => p.id === line.productId);
+            const qty       = Number.parseInt(line.quantity || '0', 10);
+            const cost      = Number(line.unitCost || '0');
+            const lineTotal = (isNaN(qty) ? 0 : qty) * (isNaN(cost) ? 0 : cost);
 
             return (
-              <div key={i} className="grid grid-cols-12 gap-2 items-center">
-                {/* Product */}
-                <div className="col-span-4">
-                  <select
-                    value={line.productId}
-                    onChange={(e) => updateLine(i, 'productId', e.target.value)}
+              <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: '3fr 1fr 1fr 1.2fr 1.2fr auto',
+                  gap: 8,
+                  alignItems: 'center',
+                }}>
+                  {/* Product — searchable */}
+                  <Select
+                    showSearch
+                    value={line.productId || undefined}
+                    placeholder="Search product…"
                     disabled={loading}
-                    className={inputCls}
-                  >
-                    <option value="">Select product</option>
-                    {products.map(p => (
-                      <option key={p.id} value={p.id}>
-                        {p.name} — stock: {p.quantity}
-                      </option>
-                    ))}
-                  </select>
-                  {selected && (
-                    <div className="mt-1 px-1">
-                      <StockLevel qty={selected.quantity} />
-                    </div>
-                  )}
-                </div>
+                    onChange={(val) => updateLine(i, 'productId', val)}
+                    optionFilterProp="label"
+                    options={productOptions}
+                    filterOption={(input, option) =>
+                      (option?.label as string ?? '').toLowerCase().includes(input.toLowerCase())
+                    }
+                    style={{ width: '100%' }}
+                    size="middle"
+                  />
 
-                {/* Quantity */}
-                <div className="col-span-2">
-                  <input
-                    type="number"
-                    min="1"
-                    value={line.quantity}
-                    onChange={(e) => updateLine(i, 'quantity', e.target.value)}
+                  {/* Quantity */}
+                  <InputNumber
+                    min={1}
+                    value={line.quantity ? Number(line.quantity) : undefined}
+                    onChange={(val) => updateLine(i, 'quantity', val?.toString() ?? '')}
                     disabled={loading}
-                    className={`${inputCls} text-center`}
                     placeholder="0"
+                    style={{ width: '100%' }}
+                    controls={false}
                   />
-                </div>
 
-                {/* Unit cost */}
-                <div className="col-span-2">
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={line.unitCost}
-                    onChange={(e) => updateLine(i, 'unitCost', e.target.value)}
+                  {/* Unit cost */}
+                  <InputNumber
+                    min={0}
+                    step={0.01}
+                    precision={2}
+                    value={line.unitCost ? Number(line.unitCost) : undefined}
+                    onChange={(val) => updateLine(i, 'unitCost', val?.toString() ?? '')}
                     disabled={loading}
-                    className={`${inputCls} text-right`}
                     placeholder={selected ? selected.costPrice.toFixed(2) : '0.00'}
+                    style={{ width: '100%' }}
+                    controls={false}
                   />
-                </div>
 
-                {/* Expiry */}
-                <div className="col-span-2">
-                  <input
-                    type="date"
-                    value={line.expiryDate}
-                    onChange={(e) => updateLine(i, 'expiryDate', e.target.value)}
+                  {/* Expiry */}
+                  <DatePicker
+                    value={line.expiryDate ? dayjs(line.expiryDate) : null}
+                    onChange={(date: Dayjs | null) =>
+                      updateLine(i, 'expiryDate', date ? date.format('YYYY-MM-DD') : '')
+                    }
                     disabled={loading}
-                    className={inputCls}
+                    format="YYYY-MM-DD"
+                    placeholder="Expiry"
+                    style={{ width: '100%' }}
+                    disabledDate={(d) => d.isBefore(dayjs(), 'day')}
                   />
-                </div>
 
-                {/* Line total + remove */}
-                <div className="col-span-2 flex items-center gap-1">
-                  <input
-                    type="text"
+                  {/* Line total (read-only) */}
+                  <Input
                     value={`GH₵${lineTotal.toFixed(2)}`}
                     disabled
-                    className={`${inputCls} text-right text-gray-500`}
+                    style={{ textAlign: 'right', color: '#6b7280' }}
                   />
+
+                  {/* Remove */}
                   <button
                     type="button"
                     onClick={() => removeLine(i)}
                     disabled={loading || lines.length === 1}
                     title="Remove row"
-                    className="w-8 h-9 flex items-center justify-center rounded-lg text-gray-400
-                      hover:text-red-500 hover:bg-red-50 disabled:opacity-30 disabled:cursor-not-allowed
-                      transition-colors shrink-0"
+                    style={{
+                      width: 32,
+                      height: 32,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      borderRadius: 8,
+                      border: 'none',
+                      background: 'transparent',
+                      color: '#9ca3af',
+                      cursor: lines.length === 1 ? 'not-allowed' : 'pointer',
+                      opacity: lines.length === 1 ? 0.3 : 1,
+                      transition: 'all 0.15s',
+                      flexShrink: 0,
+                    }}
+                    onMouseEnter={(e) => { if (lines.length > 1) (e.currentTarget.style.color = '#ef4444'); (e.currentTarget.style.background = '#fef2f2'); }}
+                    onMouseLeave={(e) => { (e.currentTarget.style.color = '#9ca3af'); (e.currentTarget.style.background = 'transparent'); }}
                   >
                     <X size={14} />
                   </button>
                 </div>
+
+                {/* Stock level badge below product select */}
+                {selected && (
+                  <div style={{ paddingLeft: 4 }}>
+                    <StockLevel qty={selected.quantity} />
+                  </div>
+                )}
               </div>
             );
           })}
+        </div>
 
+        {/* Add row + grand total */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <button
             type="button"
             onClick={addLine}
             disabled={loading}
-            className="text-xs text-orange-600 hover:text-orange-700 font-semibold
-              disabled:opacity-40 transition-colors inline-flex items-center gap-1"
+            style={{
+              background: 'none',
+              border: 'none',
+              color: '#f97316',
+              fontWeight: 600,
+              fontSize: 12,
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
+              opacity: loading ? 0.4 : 1,
+            }}
           >
             <Plus size={13} /> Add another product
           </button>
 
-          <div className="flex justify-end pt-1">
-            <span className="text-sm text-gray-500 mr-2">Grand Total:</span>
-            <span className="text-sm font-semibold text-gray-900">GH₵{grandTotal.toFixed(2)}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Text style={{ fontSize: 13, color: '#6b7280' }}>Grand Total:</Text>
+            <Text strong style={{ fontSize: 13, color: '#111827' }}>GH₵{grandTotal.toFixed(2)}</Text>
           </div>
         </div>
 
-        {/* Shared expiry (fallback for lines without their own) */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-semibold mb-1 text-gray-700">
-              Default Expiry Date
-            </label>
-            <input
-              type="date"
-              value={expiryDate}
-              onChange={(e) => setExpiryDate(e.target.value)}
-              disabled={loading}
-              className={inputCls}
-            />
-            <p className="text-xs text-gray-400 mt-1">Used for lines without their own expiry date</p>
-          </div>
+        <Divider style={{ margin: '0' }} />
 
-          <div>
-            <label className="block text-sm font-semibold mb-1 text-gray-700">Note</label>
-            <input
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              placeholder="Supplier delivery..."
-              disabled={loading}
-              className={inputCls}
-            />
-          </div>
+        {/* Note */}
+        <div>
+          <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>
+            Note
+          </label>
+          <Input
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="Supplier delivery…"
+            disabled={loading}
+            size="large"
+          />
         </div>
 
         {/* Batch section */}
-        <div className="border border-gray-200 rounded-xl p-4 space-y-4">
-          <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
-            <input
-              type="checkbox"
-              checked={createBatch}
-              onChange={handleCreateBatchToggle}
-              disabled={loading}
-            />
-            Create New Batch
-          </label>
+        <div style={{
+          border: '1px solid #e5e7eb',
+          borderRadius: 12,
+          padding: 16,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 14,
+        }}>
+          <Checkbox
+            checked={createBatch}
+            onChange={(e) => { setCreateBatch(e.target.checked); setExistingBatchId(''); }}
+            disabled={loading}
+          >
+            <Text strong style={{ fontSize: 13 }}>Create New Batch</Text>
+          </Checkbox>
 
           {!createBatch && (
             <div>
-              <label className="block text-xs font-semibold mb-1 text-gray-600">
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#4b5563', marginBottom: 6 }}>
                 Add To Existing Batch
               </label>
-              <select
-                value={existingBatchId}
-                onChange={(e) => setExistingBatchId(e.target.value)}
+              <Select
+                value={existingBatchId || undefined}
+                onChange={setExistingBatchId}
                 disabled={loading}
-                className={inputCls}
-              >
-                <option value="">Select batch</option>
-                {batches.map((batch) => (
-                  <option key={batch.id} value={batch.id}>
-                    {batch.name || 'Unnamed batch'}
-                  </option>
-                ))}
-              </select>
+                placeholder="Select batch"
+                style={{ width: '100%' }}
+                options={batches.map(b => ({ value: b.id, label: b.name || 'Unnamed batch' }))}
+              />
             </div>
           )}
 
           {createBatch && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div className="md:col-span-2">
-                <label className="block text-xs font-semibold mb-1 text-gray-600">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#4b5563', marginBottom: 6 }}>
                   Batch Description
                 </label>
-                <input
-                  type="text"
+                <Input
                   value={batchDescription}
                   onChange={(e) => setBatchDescription(e.target.value)}
                   placeholder="May whey shipment"
                   disabled={loading}
-                  className={inputCls}
+                  size="large"
                 />
-                <p className="text-xs text-gray-400 mt-1">Batch code will generate automatically</p>
+                <Text style={{ fontSize: 11, color: '#9ca3af', marginTop: 4, display: 'block' }}>
+                  Batch code will generate automatically
+                </Text>
               </div>
-
-              <div className="md:col-span-2">
-                <label className="block text-xs font-semibold mb-1 text-gray-600">Supplier</label>
-                <input
-                  type="text"
+              <div>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#4b5563', marginBottom: 6 }}>
+                  Supplier
+                </label>
+                <Input
                   value={supplier}
                   onChange={(e) => setSupplier(e.target.value)}
                   placeholder="Supplier name"
                   disabled={loading}
-                  className={inputCls}
+                  size="large"
                 />
               </div>
             </div>
@@ -349,17 +397,11 @@ export const AddStockForm: React.FC<AddStockFormProps> = ({
         </div>
 
         {/* Actions */}
-        <div className="flex gap-3 pt-2">
+        <div style={{ display: 'flex', gap: 12, paddingTop: 4 }}>
           <Button variant="secondary" fullWidth onClick={onClose} disabled={loading}>
             Cancel
           </Button>
-          <Button
-            variant="primary"
-            color="orange"
-            fullWidth
-            loading={loading}
-            onClick={handleSubmit}
-          >
+          <Button variant="primary" color="orange" fullWidth loading={loading} onClick={handleSubmit}>
             Add Stock
           </Button>
         </div>

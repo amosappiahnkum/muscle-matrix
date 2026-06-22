@@ -1,7 +1,8 @@
 import React from 'react';
 import {
   Dumbbell, Users, Package, BarChart3,
-  LogOut, FileText, ShoppingCart, Download, KeyRound, ClipboardList, ReceiptText,
+  LogOut, FileText, ShoppingCart, Download, KeyRound,
+  ClipboardList, ReceiptText, Truck, Tag,
 } from 'lucide-react';
 import { TabType } from '../../pages/admin/AdminDashboard';
 import { User } from '../../types';
@@ -14,22 +15,54 @@ interface AdminSidebarProps {
   onLogout:    () => void;
 }
 
-const menuItems: { id: TabType; label: string; icon: React.FC<{ className?: string }> }[] = [
-  { id: 'overview',     label: 'Overview',           icon: BarChart3    },
-  { id: 'employees',    label: 'Employees',           icon: Users        },
-  { id: 'products',     label: 'Products',            icon: Package      },
-  { id: 'inventory',    label: 'Inventory',           icon: ClipboardList },
-  { id: 'expenses',     label: 'Expenses',            icon: ReceiptText  },
-  { id: 'reports',      label: 'Sales Reports',       icon: FileText     },
-  { id: 'transactions', label: 'Transactions',        icon: ShoppingCart },
-  { id: 'backup',       label: 'Backup & Restore',    icon: Download     },
-  { id: 'credentials',  label: 'Change Credentials',  icon: KeyRound     },
+interface MenuItem {
+  id:    TabType;
+  label: string;
+  icon:  React.FC<{ className?: string }>;
+}
+
+interface MenuGroup {
+  label:  string;
+  items:  MenuItem[];
+}
+
+const menuGroups: MenuGroup[] = [
+  {
+    label: 'General',
+    items: [
+      { id: 'overview',     label: 'Overview',          icon: BarChart3    },
+      { id: 'employees',    label: 'Employees',          icon: Users        },
+    ],
+  },
+  {
+    label: 'Inventory',
+    items: [
+      { id: 'products',     label: 'Products',           icon: Package      },
+      { id: 'inventory',    label: 'Inventory',          icon: ClipboardList },
+      { id: 'suppliers',    label: 'Suppliers',          icon: Truck        },
+      { id: 'categories',   label: 'Categories',         icon: Tag          },
+    ],
+  },
+  {
+    label: 'Finance',
+    items: [
+      { id: 'expenses',     label: 'Expenses',           icon: ReceiptText  },
+      { id: 'transactions', label: 'Transactions',       icon: ShoppingCart },
+      { id: 'reports',      label: 'Sales Reports',      icon: BarChart3    },
+    ],
+  },
+  {
+    label: 'Settings',
+    items: [
+      { id: 'backup',       label: 'Backup & Restore',   icon: Download     },
+      { id: 'credentials',  label: 'Change Credentials', icon: KeyRound     },
+    ],
+  },
 ];
 
 const AdminSidebar: React.FC<AdminSidebarProps> = ({
   activeTab, open, user, onTabChange, onLogout,
 }) => (
-  // fixed + h-screen keeps the sidebar pinned while content scrolls
   <aside
     className={`${
       open ? 'w-64' : 'w-16'
@@ -54,38 +87,55 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({
     </div>
 
     {/* ── Nav ─────────────────────────────────────────────────────────── */}
-    {/* flex-1 + overflow-y-auto lets nav scroll if items overflow, logo/footer stay fixed */}
-    <nav className="flex-1 overflow-y-auto px-2 py-3 space-y-0.5">
-      {menuItems.map((item) => {
-        const isActive = activeTab === item.id;
-        const activeClass = item.id === 'credentials'
-          ? 'bg-purple-600/20 text-purple-300 border border-purple-700/40'
-          : 'bg-orange-500/20 text-orange-300 border border-orange-600/30';
+    <nav className="flex-1 overflow-y-auto px-2 py-3 space-y-4">
+      {menuGroups.map((group) => (
+        <div key={group.label}>
+          {/* Group label — hidden when collapsed */}
+          {open && (
+            <p className="px-3 mb-1 text-[10px] font-bold uppercase tracking-widest text-gray-600">
+              {group.label}
+            </p>
+          )}
 
-        return (
-          <button
-            key={item.id}
-            onClick={() => onTabChange(item.id)}
-            title={!open ? item.label : undefined}
-            className={`
-              w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-150
-              ${isActive
-                ? activeClass
-                : 'text-gray-400 hover:bg-gray-800 hover:text-gray-200 border border-transparent'
-              }
-            `}
-          >
-            <item.icon className={`w-4 h-4 flex-shrink-0 ${isActive ? '' : 'opacity-70'}`} />
-            {open && (
-              <span className="text-sm font-medium truncate">{item.label}</span>
-            )}
-            {/* Active dot when collapsed */}
-            {!open && isActive && (
-              <span className="absolute left-11 w-1.5 h-1.5 rounded-full bg-orange-400" />
-            )}
-          </button>
-        );
-      })}
+          {/* Divider line when collapsed */}
+          {!open && (
+            <div className="mx-3 mb-1 border-t border-gray-800" />
+          )}
+
+          <div className="space-y-0.5">
+            {group.items.map((item) => {
+              const isActive = activeTab === item.id;
+              const activeClass = item.id === 'credentials'
+                ? 'bg-purple-600/20 text-purple-300 border border-purple-700/40'
+                : 'bg-orange-500/20 text-orange-300 border border-orange-600/30';
+
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => onTabChange(item.id)}
+                  title={!open ? item.label : undefined}
+                  className={`
+                    w-full flex items-center gap-3 px-3 py-2.5 rounded-xl
+                    transition-all duration-150 relative
+                    ${isActive
+                      ? activeClass
+                      : 'text-gray-400 hover:bg-gray-800 hover:text-gray-200 border border-transparent'
+                    }
+                  `}
+                >
+                  <item.icon className={`w-4 h-4 flex-shrink-0 ${isActive ? '' : 'opacity-70'}`} />
+                  {open && (
+                    <span className="text-sm font-medium truncate">{item.label}</span>
+                  )}
+                  {!open && isActive && (
+                    <span className="absolute left-11 w-1.5 h-1.5 rounded-full bg-orange-400" />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ))}
     </nav>
 
     {/* ── Footer ──────────────────────────────────────────────────────── */}

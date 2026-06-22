@@ -10,18 +10,24 @@ export interface BatchProductEntry {
   unitCost:  string;
 }
 
+// On-the-way purchasing costs (transport, loading, etc.)
+export interface AdditionalExpense {
+  category:    string;
+  description: string | null;
+  amount:      number;
+}
+
 export interface ExpenseFormData {
   mode:          ExpenseMode;
   batchId:       string;
   batchName:     string;
-  // Multi-product list (used when creating or editing a batch)
   batchProducts: BatchProductEntry[];
-  expiryDate:    string;
   supplier:      string;
   description:   string;
   amount:        string;
   category:      string;
   note:          string;
+  
 }
 
 export const emptyBatchProduct = (): BatchProductEntry => ({
@@ -35,7 +41,6 @@ export const defaultForm: ExpenseFormData = {
   batchId:       '',
   batchName:     '',
   batchProducts: [emptyBatchProduct()],
-  expiryDate:    '',
   supplier:      '',
   description:   '',
   amount:        '',
@@ -45,30 +50,31 @@ export const defaultForm: ExpenseFormData = {
 
 // ─── payload builder ──────────────────────────────────────────────────────────
 
-const buildPayload = (form: ExpenseFormData): ExpensePayload => {
-  const description = form.description.trim();
-  const category    = form.category.trim() || null;
-  const note        = form.note.trim()     || null;
+const buildPayload = (
+  form:                 ExpenseFormData,
+  additionalExpenses?:  AdditionalExpense[],
+): ExpensePayload => {
+  // Description is optional — use null when blank
+  const description = form.description.trim() || null;
+  const category    = form.category.trim()    || null;
+  const note        = form.note.trim()        || null;
 
-  if (!description) throw new Error('Description is required.');
-
-  /* ── custom expense ── */
+  // ── custom expense ────────────────────────────────────────────────────────
   if (form.mode === 'custom') {
     const amount = Number(form.amount);
     if (!form.amount || Number.isNaN(amount) || amount <= 0)
       throw new Error('Amount must be greater than 0.');
-    return { description, amount, category, note };
+    return { description: description ?? 'Custom expense', amount, category, note };
   }
 
-  /* ── link to existing batch ── */
+  // ── link to existing batch ────────────────────────────────────────────────
   if (form.batchId) {
     const amount = form.amount ? Number(form.amount) : undefined;
     if (amount !== undefined && (Number.isNaN(amount) || amount <= 0))
       throw new Error('Amount must be greater than 0.');
 
-    // Validate each product row that has been filled in
     const products = form.batchProducts
-      .filter(p => p.productId || p.quantity || p.unitCost) // touched rows only
+      .filter(p => p.productId || p.quantity || p.unitCost)
       .map((p, i) => {
         const qty  = Number.parseInt(p.quantity, 10);
         const cost = Number(p.unitCost);
@@ -80,16 +86,15 @@ const buildPayload = (form: ExpenseFormData): ExpensePayload => {
 
     return {
       batchId: form.batchId,
-      description,
+      description: description ?? 'Inventory batch expense',
       amount,
       category,
       note,
-      // only send products array if the user actually touched it
       ...(products.length > 0 && { products }),
     };
   }
 
-  /* ── create new batch with multiple products ── */
+  // ── create new batch with multiple products ───────────────────────────────
   if (form.batchProducts.length === 0)
     throw new Error('Add at least one product to the batch.');
 
@@ -102,16 +107,21 @@ const buildPayload = (form: ExpenseFormData): ExpensePayload => {
     return { productId: p.productId, quantity: qty, unitCost: cost };
   });
 
+  // Filter out incomplete on-the-way rows just in case
+  const validAdditional = (additionalExpenses ?? []).filter(
+    e => e.category && e.amount > 0
+  );
+
   return {
-    createBatch: true,
-    batchName:   form.batchName.trim() || null,
+    createBatch:  true,
     products,
-    expiryDate:  form.expiryDate || null,
-    supplier:    form.supplier.trim() || null,
-    description,
+    supplier:     form.supplier.trim() || null,
+    description:  description ?? 'Inventory batch expense',
     category,
     note,
-  };
+    // Only include if there are valid rows — backend ignores missing key
+    ...(validAdditional.length > 0 && { additionalExpenses: validAdditional }),
+  } as ExpensePayload;
 };
 
 // ─── hook ─────────────────────────────────────────────────────────────────────
@@ -172,7 +182,7 @@ export function useExpenses() {
     });
   }, [expenses, search, typeFilter]);
 
-  // ── open/close ──────────────────────────────────────────────────────────────
+  // ── open/close ────────────────────────────────────────────────────────────
 
   const openCreate = () => {
     setEditing(null);
@@ -184,8 +194,6 @@ export function useExpenses() {
   const openEdit = (expense: Expense) => {
     setEditing(expense);
 
-    // Reconstruct batchProducts from the existing batch data.
-    // If the batch has a products array use it; fall back to the single-product shape.
     const batchProducts: BatchProductEntry[] =
       expense.batch?.products?.map(p => ({
         productId: p.productId ?? '',
@@ -205,9 +213,8 @@ export function useExpenses() {
       batchId:       expense.batchId ?? '',
       batchName:     expense.batch?.name ?? '',
       batchProducts,
-      expiryDate:    expense.batch?.expiryDate ?? '',
       supplier:      expense.batch?.supplier ?? '',
-      description:   expense.description,
+      description:   expense.description ?? '',
       amount:        expense.amount.toString(),
       category:      expense.category ?? '',
       note:          expense.note ?? '',
@@ -222,15 +229,13 @@ export function useExpenses() {
     setForm(defaultForm);
   };
 
-  // ── field helpers ───────────────────────────────────────────────────────────
+  // ── field helpers ─────────────────────────────────────────────────────────
 
-  /** Generic scalar field setter */
   const setField =
     (key: keyof ExpenseFormData) =>
     (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
       setForm(cur => ({ ...cur, [key]: e.target.value }));
 
-  /** Update a single cell inside batchProducts */
   const setBatchProductField = (
     index: number,
     field: keyof BatchProductEntry,
@@ -255,22 +260,30 @@ export function useExpenses() {
       batchProducts: cur.batchProducts.filter((_, i) => i !== index),
     }));
 
-  // ── submit / delete ─────────────────────────────────────────────────────────
+  // ── submit ────────────────────────────────────────────────────────────────
 
-  const handleSubmit = async (): Promise<boolean> => {
+  /**
+   * Pass `additionalExpenses` from the form's on-the-way costs section.
+   * Only relevant when creating a new batch — ignored for custom or edit.
+   */
+  const handleSubmit = async (
+    additionalExpenses?: AdditionalExpense[],
+  ): Promise<boolean> => {
     setSaving(true);
     setError('');
     try {
-      const payload = buildPayload(form);
+      const payload = buildPayload(form, additionalExpenses);
 
       if (editing) {
         const updated = await updateExpense(editing.id, {
-          description:   payload.description,
-          amount:        payload.amount,
-          category:      payload.category,
-          note:          payload.note,
-          // pass products through so the API can update the batch
+          description: payload.description,
+          amount:      payload.amount,
+          category:    payload.category,
+          note:        payload.note,
           ...('products' in payload && { products: payload.products }),
+          // Always send additionalExpenses on update so the backend can sync
+          // them — send empty array to clear all on-the-way costs if user removed them all
+          additionalExpenses: (additionalExpenses ?? []).filter(e => e.category && e.amount > 0),
         });
         setExpenses(cur => cur.map(e => e.id === updated.id ? updated : e));
         flash('Expense updated successfully.');
@@ -289,6 +302,8 @@ export function useExpenses() {
       setSaving(false);
     }
   };
+
+  // ── delete ────────────────────────────────────────────────────────────────
 
   const handleDelete = async (expense: Expense) => {
     if (!window.confirm(`Delete expense "${expense.description}"?`)) return;

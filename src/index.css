@@ -1,10 +1,49 @@
 @import "tailwindcss";
 
-
-
-
+/* ══════════════════════════════════════════════════════════
+   ANT DESIGN GLOBAL TOKEN OVERRIDES
+   Overrides Ant's CSS variables so components that render
+   outside the React tree (dropdowns, date-picker popups,
+   tooltips, message toasts) also use brand colors.
+══════════════════════════════════════════════════════════ */
 :root {
-  /* Brand */
+  /* ── Primary (orange) ── */
+  --ant-color-primary:              #f97316;
+  --ant-color-primary-hover:        #ea6c0a;
+  --ant-color-primary-active:       #c2560d;
+  --ant-color-primary-outline:      rgba(249,115,22,0.15);
+  --ant-color-primary-bg:           #fff7ed;
+  --ant-color-primary-bg-hover:     #ffedd5;
+  --ant-color-primary-border:       #fed7aa;
+  --ant-color-primary-border-hover: #fdba74;
+
+  /* ── Link ── */
+  --ant-color-link:                 #f97316;
+  --ant-color-link-hover:           #ea6c0a;
+  --ant-color-link-active:          #c2560d;
+
+  /* ── Focus ring ── */
+  --ant-color-primary-shadow:       rgba(249,115,22,0.2);
+
+  /* ── Input focus ── */
+  --ant-input-active-border-color:  #f97316;
+  --ant-input-active-shadow:        0 0 0 2px rgba(249,115,22,0.15);
+  --ant-select-active-border-color: #f97316;
+  --ant-select-active-shadow:       0 0 0 2px rgba(249,115,22,0.15);
+
+  /* ── Checkbox / Radio checked ── */
+  --ant-checkbox-color:             #f97316;
+  --ant-radio-button-checked-color: #f97316;
+
+  /* ── Spinner / loading ── */
+  --ant-color-primary-6:            #f97316;
+
+  /* ── Switch ── */
+  --ant-switch-color:               #f97316;
+}
+
+/* ── Brand ─────────────────────────────────────────────── */
+:root {
   --orange:        #f97316;
   --orange-dark:   #c2560d;
   --orange-50:     #fff7ed;
@@ -50,7 +89,88 @@
 
 /* ── Base ────────────────────────────────────────────────── */
 html { scroll-behavior: smooth; }
-/* body { font-family: 'Barlow', sans-serif; -webkit-font-smoothing: antialiased; } */
+
+/* ══════════════════════════════════════════════════════════
+   ANT DESIGN COMPONENT OVERRIDES
+   For cases where Ant inlines styles or uses class-based
+   selectors that the token layer doesn't fully reach.
+══════════════════════════════════════════════════════════ */
+
+/* Primary button */
+.ant-btn-primary {
+  background-color: var(--orange) !important;
+  border-color:     var(--orange) !important;
+}
+.ant-btn-primary:hover,
+.ant-btn-primary:focus {
+  background-color: #ea6c0a !important;
+  border-color:     #ea6c0a !important;
+}
+
+/* Input / Select focus */
+.ant-input:focus,
+.ant-input-focused,
+.ant-input-affix-wrapper:focus,
+.ant-input-affix-wrapper-focused {
+  border-color: var(--orange) !important;
+  box-shadow:   0 0 0 2px rgba(249,115,22,0.15) !important;
+}
+.ant-select-focused .ant-select-selector,
+.ant-select-selector:focus {
+  border-color: var(--orange) !important;
+  box-shadow:   0 0 0 2px rgba(249,115,22,0.15) !important;
+}
+
+/* DatePicker focus */
+.ant-picker-focused,
+.ant-picker:focus {
+  border-color: var(--orange) !important;
+  box-shadow:   0 0 0 2px rgba(249,115,22,0.15) !important;
+}
+
+/* DatePicker selected cell */
+.ant-picker-cell-in-view.ant-picker-cell-selected .ant-picker-cell-inner,
+.ant-picker-cell-in-view.ant-picker-cell-today .ant-picker-cell-inner::before {
+  background:   var(--orange) !important;
+  border-color: var(--orange) !important;
+}
+
+/* Select dropdown highlight */
+.ant-select-item-option-selected:not(.ant-select-item-option-disabled) {
+  background-color: var(--orange-50) !important;
+  color:            var(--orange)    !important;
+  font-weight:      600;
+}
+.ant-select-item-option-active:not(.ant-select-item-option-disabled) {
+  background-color: var(--orange-50) !important;
+}
+
+/* Checkbox */
+.ant-checkbox-checked .ant-checkbox-inner {
+  background-color: var(--orange) !important;
+  border-color:     var(--orange) !important;
+}
+.ant-checkbox-wrapper:hover .ant-checkbox-inner,
+.ant-checkbox:hover .ant-checkbox-inner,
+.ant-checkbox-input:focus + .ant-checkbox-inner {
+  border-color: var(--orange) !important;
+}
+
+/* Loading spinner */
+.ant-spin-dot-item {
+  background-color: var(--orange) !important;
+}
+
+/* Pagination active page */
+.ant-pagination-item-active {
+  border-color: var(--orange) !important;
+}
+.ant-pagination-item-active a {
+  color: var(--orange) !important;
+}
+
+/* Alert info accent (in case you add info alerts later) */
+.ant-alert-info .ant-alert-icon { color: var(--orange) !important; }
 
 /* ══════════════════════════════════════════════════════════
    COMPONENT COLOR CLASSES

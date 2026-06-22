@@ -1,19 +1,40 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, ReceiptText, Save } from 'lucide-react';
+import { ArrowLeft, ReceiptText, Save, Plus, X, ShoppingCart, Truck, ChevronRight } from 'lucide-react';
+import { Select, InputNumber, Input, Typography, Segmented, Spin, Divider } from 'antd';
 import { Product, ExpenseBatch, Expense } from '@/types';
 import Button from '@/components/common/Button';
-import Field from '@/components/common/Field';
 import { ErrorBanner, SuccessBanner } from '@/components/common/Banner';
-import { BatchProductEntry, ExpenseFormData, ExpenseMode } from './useExpenses';
-import { getExpense } from '@/api/api';
+import { BatchProductEntry, ExpenseFormData, ExpenseMode, AdditionalExpense } from './useExpenses';
+import {
+  getExpense,
+  getSuppliers, Supplier,
+  getCategories, Category,
+  searchSuppliers, searchCategories,
+} from '@/api/api';
+import { useExpenses } from './useExpenses';
 
-const inputCls = `w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg
-  text-gray-900 placeholder-gray-400 text-sm
-  focus:outline-none focus:bg-white focus:border-orange-400
-  focus:ring-2 focus:ring-orange-100 transition-all`;
+const { Text } = Typography;
 
-// ─── small sub-component: one product row ─────────────────────────────────────
+// ── On-the-way expense (local form state) ─────────────────────────────────────
+
+export interface OnWayExpense {
+  tempId:      string;
+  category:    string;
+  description: string;
+  amount:      string;
+}
+
+// ── Label ─────────────────────────────────────────────────────────────────────
+
+const Label: React.FC<{ children: React.ReactNode; hint?: string }> = ({ children, hint }) => (
+  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>
+    {children}
+    {hint && <span style={{ fontWeight: 400, color: '#9ca3af', marginLeft: 4, fontSize: 12 }}>{hint}</span>}
+  </label>
+);
+
+// ── Product row ───────────────────────────────────────────────────────────────
 
 interface ProductRowProps {
   row:       BatchProductEntry;
@@ -33,86 +54,164 @@ const ProductRow: React.FC<ProductRowProps> = ({
   const rowTotal = (Number.isNaN(qty) ? 0 : qty) * (Number.isNaN(cost) ? 0 : cost);
 
   return (
-    <div className="grid grid-cols-12 gap-2 items-end">
-      <div className="col-span-12 sm:col-span-4">
-        {index === 0 && (
-          <label className="block text-xs font-medium text-gray-600 mb-1">Product</label>
-        )}
-        <select
-          value={row.productId}
-          onChange={e => onChange('productId', e.target.value)}
-          disabled={disabled}
-          className={inputCls}
-        >
-          <option value="">Select product</option>
-          {products.map(p => (
-            <option key={p.id} value={p.id}>{p.name}</option>
-          ))}
-        </select>
-      </div>
+    <div style={{ display: 'grid', gridTemplateColumns: '3fr 1fr 1.2fr 1.2fr auto', gap: 8, alignItems: 'center' }}>
+      <Select
+        showSearch
+        value={row.productId || undefined}
+        placeholder="Search product…"
+        disabled={disabled}
+        onChange={(val) => onChange('productId', val)}
+        optionFilterProp="label"
+        options={products.map(p => ({ value: p.id, label: p.name }))}
+        filterOption={(input, option) =>
+          (option?.label as string ?? '').toLowerCase().includes(input.toLowerCase())
+        }
+        style={{ width: '100%' }}
+      />
+      <InputNumber
+        min={1}
+        value={row.quantity ? Number(row.quantity) : undefined}
+        onChange={(val) => onChange('quantity', val?.toString() ?? '')}
+        disabled={disabled} placeholder="0"
+        style={{ width: '100%' }} controls={false}
+      />
+      <InputNumber
+        min={0} step={0.01} precision={2}
+        value={row.unitCost ? Number(row.unitCost) : undefined}
+        onChange={(val) => onChange('unitCost', val?.toString() ?? '')}
+        disabled={disabled} placeholder="0.00"
+        style={{ width: '100%' }} controls={false}
+      />
+      <Input
+        value={`GH₵${rowTotal.toFixed(2)}`}
+        disabled style={{ textAlign: 'right', color: '#6b7280' }}
+      />
+      <button
+        type="button" onClick={onRemove} disabled={disabled || !canRemove}
+        style={{
+          width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          borderRadius: 8, border: 'none', background: 'transparent', color: '#9ca3af',
+          cursor: !canRemove ? 'not-allowed' : 'pointer', opacity: !canRemove ? 0.3 : 1, flexShrink: 0,
+        }}
+        onMouseEnter={(e) => { if (canRemove) { e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.background = '#fef2f2'; }}}
+        onMouseLeave={(e) => { e.currentTarget.style.color = '#9ca3af'; e.currentTarget.style.background = 'transparent'; }}
+      >
+        <X size={14} />
+      </button>
+    </div>
+  );
+};
 
-      <div className="col-span-4 sm:col-span-2">
-        {index === 0 && (
-          <label className="block text-xs font-medium text-gray-600 mb-1">Qty</label>
-        )}
-        <input
-          type="number"
-          min="1"
-          value={row.quantity}
-          onChange={e => onChange('quantity', e.target.value)}
-          disabled={disabled}
-          className={inputCls}
-          placeholder="0"
-        />
-      </div>
+const ProductRowHeaders: React.FC = () => (
+  <div style={{ display: 'grid', gridTemplateColumns: '3fr 1fr 1.2fr 1.2fr auto', gap: 8, padding: '0 4px' }}>
+    {['Product', 'Qty', 'Unit Cost', 'Total', ''].map((h, i) => (
+      <Text key={i} style={{ fontSize: 11, fontWeight: 600, color: '#6b7280' }}>{h}</Text>
+    ))}
+  </div>
+);
 
-      <div className="col-span-4 sm:col-span-3">
-        {index === 0 && (
-          <label className="block text-xs font-medium text-gray-600 mb-1">Unit Cost</label>
-        )}
-        <input
-          type="number"
-          min="0"
-          step="0.01"
-          value={row.unitCost}
-          onChange={e => onChange('unitCost', e.target.value)}
-          disabled={disabled}
-          className={inputCls}
-          placeholder="0.00"
-        />
-      </div>
+// ── On-the-way row ────────────────────────────────────────────────────────────
 
-      <div className="col-span-3 sm:col-span-2">
-        {index === 0 && (
-          <label className="block text-xs font-medium text-gray-600 mb-1">Total</label>
-        )}
-        <input
-          type="text"
-          value={`GH₵${rowTotal.toFixed(2)}`}
-          disabled
-          className={`${inputCls} text-gray-500`}
-        />
-      </div>
+interface OnWayRowProps {
+  row:        OnWayExpense;
+  categories: Category[];
+  catLoading: boolean;
+  onCatSearch:(v: string) => void;
+  canRemove:  boolean;
+  disabled:   boolean;
+  onChange:   (field: keyof Omit<OnWayExpense, 'tempId'>, value: string) => void;
+  onRemove:   () => void;
+}
 
-      <div className="col-span-1 flex items-end pb-0.5">
-        {index === 0 && <div className="mb-1 h-4" />}
-        <button
-          type="button"
-          onClick={onRemove}
-          disabled={disabled || !canRemove}
-          title="Remove row"
-          className="w-8 h-9 flex items-center justify-center rounded-lg text-gray-400
-            hover:text-red-500 hover:bg-red-50 disabled:opacity-30 disabled:cursor-not-allowed
-            transition-colors"
-        >
-          ×
-        </button>
+const OnWayRow: React.FC<OnWayRowProps> = ({
+  row, categories, catLoading, onCatSearch, canRemove, disabled, onChange, onRemove,
+}) => (
+  <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 2fr 1fr auto', gap: 8, alignItems: 'center' }}>
+    <Select
+      showSearch
+      value={row.category || undefined}
+      placeholder="Category…"
+      disabled={disabled}
+      loading={catLoading}
+      onSearch={onCatSearch}
+      onChange={(val) => onChange('category', val)}
+      filterOption={false}
+      options={categories.map(c => ({ value: c.name, label: c.name }))}
+      style={{ width: '100%' }}
+      notFoundContent={catLoading ? <Spin size="small" /> : 'No categories'}
+      allowClear
+    />
+    <Input
+      value={row.description}
+      onChange={(e) => onChange('description', e.target.value)}
+      disabled={disabled}
+      placeholder="e.g. Truck hire, loading fee…"
+    />
+    <InputNumber
+      min={0} step={0.01} precision={2}
+      value={row.amount ? Number(row.amount) : undefined}
+      onChange={(val) => onChange('amount', val?.toString() ?? '')}
+      disabled={disabled} placeholder="0.00"
+      style={{ width: '100%' }} controls={false}
+    />
+    <button
+      type="button" onClick={onRemove} disabled={disabled || !canRemove}
+      style={{
+        width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center',
+        borderRadius: 8, border: 'none', background: 'transparent', color: '#9ca3af',
+        cursor: !canRemove ? 'not-allowed' : 'pointer', opacity: !canRemove ? 0.3 : 1, flexShrink: 0,
+      }}
+      onMouseEnter={(e) => { if (canRemove) { e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.background = '#fef2f2'; }}}
+      onMouseLeave={(e) => { e.currentTarget.style.color = '#9ca3af'; e.currentTarget.style.background = 'transparent'; }}
+    >
+      <X size={14} />
+    </button>
+  </div>
+);
+
+// ── Summary bar ───────────────────────────────────────────────────────────────
+
+const SummaryBar: React.FC<{ productsTotal: number; onWayTotal: number }> = ({
+  productsTotal, onWayTotal,
+}) => {
+  const grand = productsTotal + onWayTotal;
+  return (
+    <div style={{
+      background: '#f8fafc', border: '1px solid #e2e8f0',
+      borderRadius: 10, padding: '14px 16px',
+      display: 'flex', flexDirection: 'column', gap: 8,
+    }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <ShoppingCart size={13} style={{ color: '#6b7280' }} />
+          <Text style={{ fontSize: 13, color: '#6b7280' }}>Products total</Text>
+        </div>
+        <Text style={{ fontSize: 13, color: '#374151', fontVariantNumeric: 'tabular-nums' }}>
+          GH₵{productsTotal.toFixed(2)}
+        </Text>
+      </div>
+      {onWayTotal > 0 && (
+        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Truck size={13} style={{ color: '#6b7280' }} />
+            <Text style={{ fontSize: 13, color: '#6b7280' }}>On-the-way costs</Text>
+          </div>
+          <Text style={{ fontSize: 13, color: '#374151', fontVariantNumeric: 'tabular-nums' }}>
+            + GH₵{onWayTotal.toFixed(2)}
+          </Text>
+        </div>
+      )}
+      <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: 8, display: 'flex', justifyContent: 'space-between' }}>
+        <Text strong style={{ fontSize: 14, color: '#111827' }}>Grand total</Text>
+        <Text strong style={{ fontSize: 16, color: '#f97316', fontVariantNumeric: 'tabular-nums' }}>
+          GH₵{grand.toFixed(2)}
+        </Text>
       </div>
     </div>
   );
 };
 
-// ─── page ───────────────────────────────────────────────────────────────────
+// ── Page ──────────────────────────────────────────────────────────────────────
 
 interface ExpenseFormPageProps {
   editing:              Expense | null;
@@ -122,12 +221,16 @@ interface ExpenseFormPageProps {
   loading:              boolean;
   error:                string;
   success:              string;
+  onWayExpenses:        OnWayExpense[];
   onChange:             (key: keyof ExpenseFormData) =>
     (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => void;
   onModeChange:         (mode: ExpenseMode) => void;
   onBatchProductChange: (index: number, field: keyof BatchProductEntry, value: string) => void;
   onAddBatchProduct:    () => void;
   onRemoveBatchProduct: (index: number) => void;
+  onAddOnWay:           () => void;
+  onRemoveOnWay:        (index: number) => void;
+  onOnWayChange:        (index: number, field: keyof Omit<OnWayExpense, 'tempId'>, value: string) => void;
   onSubmit:             () => void;
   onCancel:             () => void;
   onDismissError:       () => void;
@@ -135,273 +238,350 @@ interface ExpenseFormPageProps {
 }
 
 export const ExpenseFormPage: React.FC<ExpenseFormPageProps> = ({
-  editing,
-  form,
-  products,
-  batches,
-  loading,
-  error,
-  success,
-  onChange,
-  onModeChange,
-  onBatchProductChange,
-  onAddBatchProduct,
-  onRemoveBatchProduct,
-  onSubmit,
-  onCancel,
-  onDismissError,
-  onDismissSuccess,
+  editing, form, products, batches, loading,
+  error, success, onWayExpenses,
+  onChange, onModeChange,
+  onBatchProductChange, onAddBatchProduct, onRemoveBatchProduct,
+  onAddOnWay, onRemoveOnWay, onOnWayChange,
+  onSubmit, onCancel, onDismissError, onDismissSuccess,
 }) => {
-  const isBatch         = form.mode === 'inventory_batch';
-  const selectedBatch   = batches.find(b => b.id === form.batchId);
-  const isExistingBatch = isBatch && !!form.batchId;
+  const isBatch = form.mode === 'inventory_batch';
 
-  const grandTotal = form.batchProducts.reduce((sum, row) => {
+  // ── Suppliers ─────────────────────────────────────────────────────────────
+  const [suppliers,        setSuppliers]        = useState<Supplier[]>([]);
+  const [supplierSearch,   setSupplierSearch]   = useState('');
+  const [suppliersLoading, setSuppliersLoading] = useState(false);
+
+  const loadSuppliers = useCallback(async (search = '') => {
+    setSuppliersLoading(true);
+    try {
+      const data = search ? await searchSuppliers(search) : await getSuppliers();
+      setSuppliers(data);
+    } catch { /* silently fail */ }
+    finally { setSuppliersLoading(false); }
+  }, []);
+
+  useEffect(() => { loadSuppliers(); }, [loadSuppliers]);
+  useEffect(() => {
+    const t = setTimeout(() => loadSuppliers(supplierSearch), 300);
+    return () => clearTimeout(t);
+  }, [supplierSearch, loadSuppliers]);
+
+  // ── Categories ────────────────────────────────────────────────────────────
+  const [categories,        setCategories]        = useState<Category[]>([]);
+  const [categorySearch,    setCategorySearch]    = useState('');
+  const [categoriesLoading, setCategoriesLoading] = useState(false);
+
+  const loadCategories = useCallback(async (search = '') => {
+    setCategoriesLoading(true);
+    try {
+      const data = search ? await searchCategories(search) : await getCategories();
+      setCategories(data);
+    } catch { /* silently fail */ }
+    finally { setCategoriesLoading(false); }
+  }, []);
+
+  useEffect(() => { loadCategories(); }, [loadCategories]);
+  useEffect(() => {
+    const t = setTimeout(() => loadCategories(categorySearch), 300);
+    return () => clearTimeout(t);
+  }, [categorySearch, loadCategories]);
+
+  // ── Totals ────────────────────────────────────────────────────────────────
+  const productsTotal = form.batchProducts.reduce((sum, row) => {
     const qty  = Number.parseInt(row.quantity || '0', 10);
     const cost = Number(row.unitCost || '0');
     return sum + (Number.isNaN(qty) ? 0 : qty) * (Number.isNaN(cost) ? 0 : cost);
   }, 0);
 
-  const showProductEditor = isBatch && (!editing || isExistingBatch);
-  const showBatchMeta     = isBatch && !editing && !isExistingBatch;
+  const onWayTotal = onWayExpenses.reduce((sum, row) => {
+    const amt = Number(row.amount || '0');
+    return sum + (Number.isNaN(amt) ? 0 : amt);
+  }, 0);
+
+  // ── Bridges ───────────────────────────────────────────────────────────────
+  const antdSelect = (key: keyof ExpenseFormData) => (val: string) =>
+    onChange(key)({ target: { value: val } } as React.ChangeEvent<HTMLSelectElement>);
+
+  const antdNumber = (key: keyof ExpenseFormData) => (val: number | null) =>
+    onChange(key)({ target: { value: val?.toString() ?? '' } } as React.ChangeEvent<HTMLInputElement>);
 
   return (
-    <div className="space-y-5 max-w-3xl">
+    <div style={{ maxWidth: 720, display: 'flex', flexDirection: 'column', gap: 20 }}>
+
       {/* Header */}
-      <div className="flex items-center gap-3">
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         <button
           onClick={onCancel}
-          title="Back"
-          className="p-2 rounded-xl border border-gray-200 text-gray-500
-            hover:text-gray-700 hover:bg-gray-50 transition-colors"
+          style={{
+            padding: 8, borderRadius: 12, border: '1px solid #e5e7eb',
+            background: 'transparent', color: '#6b7280', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', transition: 'all 0.15s',
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = '#f9fafb'; e.currentTarget.style.color = '#111827'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#6b7280'; }}
         >
           <ArrowLeft size={18} />
         </button>
-        <div className="bg-orange-50 border border-orange-200 p-2.5 rounded-xl">
-          <ReceiptText size={20} className="text-orange-500" />
+        <div style={{ background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 12, padding: 10, display: 'flex' }}>
+          <ReceiptText size={20} style={{ color: '#f97316' }} />
         </div>
         <div>
-          <h3 className="text-lg font-semibold text-gray-900">
+          <Text strong style={{ fontSize: 18, color: '#111827', display: 'block' }}>
             {editing ? 'Edit Expense' : 'Add Expense'}
-          </h3>
-          <p className="text-gray-400 text-sm">
+          </Text>
+          <Text type="secondary" style={{ fontSize: 13 }}>
             {editing ? 'Update the details of this expense' : 'Record a new expense or inventory purchase'}
-          </p>
+          </Text>
         </div>
       </div>
 
       {success && <SuccessBanner message={success} onDismiss={onDismissSuccess} />}
       {error   && <ErrorBanner   message={error}   onDismiss={onDismissError}   />}
 
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 space-y-4">
+      <div style={{
+        background: '#fff', borderRadius: 12, border: '1px solid #e5e7eb',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.06)', padding: 20,
+        display: 'flex', flexDirection: 'column', gap: 18,
+      }}>
 
-        {/* ── Mode toggle (create only) ── */}
+        {/* Mode toggle — create only */}
         {!editing && (
-          <div className="grid grid-cols-2 gap-2 bg-gray-100 p-1 rounded-lg">
-            {(['custom', 'inventory_batch'] as ExpenseMode[]).map(mode => (
-              <button
-                key={mode}
-                type="button"
-                onClick={() => onModeChange(mode)}
-                className={`py-2 rounded-md text-sm font-semibold transition-colors ${
-                  form.mode === mode
-                    ? 'bg-white text-gray-900 shadow-sm'
-                    : 'text-gray-500 hover:text-gray-800'
-                }`}
-              >
-                {mode === 'custom' ? 'Custom' : 'Batch'}
-              </button>
-            ))}
-          </div>
+          <Segmented
+            value={form.mode}
+            onChange={(val) => onModeChange(val as ExpenseMode)}
+            options={[
+              { label: 'Custom', value: 'custom'          },
+              { label: 'Batch',  value: 'inventory_batch' },
+            ]}
+            block style={{ fontWeight: 600 }}
+          />
         )}
 
-        {/* ── Existing-batch selector (create only) ── */}
+        {/* Supplier — batch only, not shown when editing (name is on the batch already) */}
         {isBatch && !editing && (
-          <>
-            <Field label="Existing Batch">
-              <select
-                value={form.batchId}
-                onChange={onChange('batchId')}
-                disabled={loading}
-                className={inputCls}
-              >
-                <option value="">Create a new batch from this expense</option>
-                {batches.map(batch => (
-                  <option key={batch.id} value={batch.id}>
-                    {batch.name || 'Unnamed batch'} – {batch.productName ?? 'Product'} – GH₵{batch.totalCost?.toFixed(2) ?? '0.00'}
-                  </option>
-                ))}
-              </select>
-            </Field>
-
-            {selectedBatch && (
-              <div className="rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-xs text-blue-700">
-                {selectedBatch.quantity} units of {selectedBatch.productName ?? 'selected product'}
-                {selectedBatch.supplier ? ` from ${selectedBatch.supplier}` : ''}
-              </div>
-            )}
-          </>
-        )}
-
-        {/* ── New-batch meta fields ── */}
-        {showBatchMeta && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Field label="Batch Name">
-              <input
-                type="text"
-                value={form.batchName}
-                onChange={onChange('batchName')}
-                disabled={loading}
-                className={inputCls}
-                placeholder="e.g. May supplement delivery"
-              />
-            </Field>
-
-            <Field label="Supplier">
-              <input
-                type="text"
-                value={form.supplier}
-                onChange={onChange('supplier')}
-                disabled={loading}
-                className={inputCls}
-                placeholder="Supplier name"
-              />
-            </Field>
-
-            <Field label="Expiry Date">
-              <input
-                type="date"
-                value={form.expiryDate}
-                onChange={onChange('expiryDate')}
-                disabled={loading}
-                className={inputCls}
-              />
-            </Field>
+          <div>
+            <Label>Supplier</Label>
+            <Select
+              showSearch
+              value={form.supplier || undefined}
+              placeholder="Search supplier…"
+              disabled={loading}
+              loading={suppliersLoading}
+              onSearch={setSupplierSearch}
+              onChange={antdSelect('supplier')}
+              filterOption={false}
+              options={suppliers.map(s => ({ value: s.name, label: s.name }))}
+              style={{ width: '100%' }} size="large" allowClear
+              notFoundContent={suppliersLoading ? <Spin size="small" /> : 'No suppliers found'}
+            />
           </div>
         )}
 
-        {/* ── Multi-product rows ── */}
-        {showProductEditor && (
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-gray-700">
-                {editing ? 'Batch Products' : 'Products'}
-              </span>
+        {/* ── Products section — shown for all batch modes including edit ─── */}
+        {isBatch && (
+          <div style={{
+            background: '#fafafa', borderRadius: 10,
+            border: '1px solid #f0f0f0', padding: 14,
+            display: 'flex', flexDirection: 'column', gap: 10,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <ShoppingCart size={14} style={{ color: '#f97316' }} />
+              <Text strong style={{ fontSize: 13, color: '#374151' }}>Products</Text>
+              <div style={{ flex: 1 }} />
               <button
-                type="button"
-                onClick={onAddBatchProduct}
-                disabled={loading}
-                className="text-xs text-orange-600 hover:text-orange-700 font-semibold
-                  disabled:opacity-40 transition-colors"
+                type="button" onClick={onAddBatchProduct} disabled={loading}
+                style={{
+                  background: 'none', border: 'none', color: '#f97316',
+                  fontWeight: 600, fontSize: 12, cursor: 'pointer',
+                  display: 'inline-flex', alignItems: 'center', gap: 4,
+                  opacity: loading ? 0.4 : 1,
+                }}
               >
-                + Add product
+                <Plus size={13} /> Add product
               </button>
             </div>
 
-            <div className="space-y-2">
+            <ProductRowHeaders />
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {form.batchProducts.map((row, i) => (
                 <ProductRow
-                  key={i}
-                  index={i}
-                  row={row}
-                  products={products}
-                  canRemove={form.batchProducts.length > 1}
-                  disabled={loading}
+                  key={i} index={i} row={row} products={products}
+                  canRemove={form.batchProducts.length > 1} disabled={loading}
                   onChange={(field, value) => onBatchProductChange(i, field, value)}
                   onRemove={() => onRemoveBatchProduct(i)}
                 />
               ))}
             </div>
 
-            <div className="flex justify-end pt-1">
-              <span className="text-sm text-gray-500 mr-2">Batch Total:</span>
-              <span className="text-sm font-semibold text-gray-900">
-                GH₵{grandTotal.toFixed(2)}
-              </span>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 8, paddingTop: 4 }}>
+              <Text type="secondary" style={{ fontSize: 12 }}>Products subtotal</Text>
+              <ChevronRight size={12} style={{ color: '#d1d5db' }} />
+              <Text strong style={{ fontSize: 13, color: '#111827', fontVariantNumeric: 'tabular-nums' }}>
+                GH₵{productsTotal.toFixed(2)}
+              </Text>
             </div>
           </div>
         )}
 
-        {/* ── Shared fields ── */}
-        <Field label="Description">
-          <input
-            type="text"
+        {/* ── On-the-way costs — shown for all batch modes including edit ── */}
+        {isBatch && (
+          <div style={{
+            background: '#fafafa', borderRadius: 10,
+            border: '1px solid #f0f0f0', padding: 14,
+            display: 'flex', flexDirection: 'column', gap: 10,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Truck size={14} style={{ color: '#6b7280' }} />
+              <div>
+                <Text strong style={{ fontSize: 13, color: '#374151' }}>On-the-way costs</Text>
+                <Text type="secondary" style={{ fontSize: 11, marginLeft: 6 }}>
+                  transport, loading, other purchasing costs
+                </Text>
+              </div>
+              <div style={{ flex: 1 }} />
+              <button
+                type="button" onClick={onAddOnWay} disabled={loading}
+                style={{
+                  background: 'none', border: 'none', color: '#6b7280',
+                  fontWeight: 600, fontSize: 12, cursor: 'pointer',
+                  display: 'inline-flex', alignItems: 'center', gap: 4,
+                  opacity: loading ? 0.4 : 1,
+                }}
+              >
+                <Plus size={13} /> Add cost
+              </button>
+            </div>
+
+            {/* Column headers */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 2fr 1fr auto', gap: 8, padding: '0 4px' }}>
+              {['Category', 'Description', 'Amount', ''].map((h, i) => (
+                <Text key={i} style={{ fontSize: 11, fontWeight: 600, color: '#6b7280' }}>{h}</Text>
+              ))}
+            </div>
+
+            {onWayExpenses.length === 0 ? (
+              <Text type="secondary" style={{ fontSize: 12, padding: '4px 4px' }}>
+                No on-the-way costs yet. Click "Add cost" to record transport, loading fees, etc.
+              </Text>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {onWayExpenses.map((row, i) => (
+                  <OnWayRow
+                    key={row.tempId}
+                    row={row}
+                    categories={categories}
+                    catLoading={categoriesLoading}
+                    onCatSearch={setCategorySearch}
+                    canRemove={true}
+                    disabled={loading}
+                    onChange={(field, value) => onOnWayChange(i, field, value)}
+                    onRemove={() => onRemoveOnWay(i)}
+                  />
+                ))}
+              </div>
+            )}
+
+            {onWayTotal > 0 && (
+              <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 8, paddingTop: 4 }}>
+                <Text type="secondary" style={{ fontSize: 12 }}>On-the-way subtotal</Text>
+                <ChevronRight size={12} style={{ color: '#d1d5db' }} />
+                <Text strong style={{ fontSize: 13, color: '#111827', fontVariantNumeric: 'tabular-nums' }}>
+                  GH₵{onWayTotal.toFixed(2)}
+                </Text>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Summary — batch only */}
+        {isBatch && (
+          <SummaryBar productsTotal={productsTotal} onWayTotal={onWayTotal} />
+        )}
+
+        <Divider style={{ margin: '4px 0' }} />
+
+        {/* Description */}
+        <div>
+          <Label hint="(optional)">Description</Label>
+          <Input
             value={form.description}
             onChange={onChange('description')}
             disabled={loading}
-            className={inputCls}
             placeholder={isBatch ? 'Inventory purchase' : 'Electric bill'}
+            size="large"
           />
-        </Field>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {(!isBatch || isExistingBatch) && (
-            <Field label="Amount">
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                value={form.amount}
-                onChange={onChange('amount')}
-                disabled={loading}
-                className={inputCls}
-                placeholder={isExistingBatch ? 'Use batch total if blank' : '0.00'}
-              />
-            </Field>
-          )}
-          <Field label="Category">
-            <input
-              type="text"
-              value={form.category}
-              onChange={onChange('category')}
-              disabled={loading}
-              className={inputCls}
-              placeholder={isBatch ? 'Inventory' : 'Utilities'}
-            />
-          </Field>
         </div>
 
-        <Field label="Note">
-          <textarea
+        {/* Amount + Category */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+          {!isBatch && (
+            <div>
+              <Label>Amount</Label>
+              <InputNumber
+                min={0} step={0.01} precision={2}
+                value={form.amount ? Number(form.amount) : undefined}
+                onChange={antdNumber('amount')}
+                disabled={loading} placeholder="0.00"
+                style={{ width: '100%' }} size="large" controls={false}
+              />
+            </div>
+          )}
+          <div style={{ gridColumn: isBatch ? '1 / -1' : undefined }}>
+            <Label>Category</Label>
+            <Select
+              showSearch
+              value={form.category || undefined}
+              placeholder="Search category…"
+              disabled={loading}
+              loading={categoriesLoading}
+              onSearch={setCategorySearch}
+              onChange={antdSelect('category')}
+              filterOption={false}
+              options={categories.map(c => ({ value: c.name, label: c.name }))}
+              style={{ width: '100%' }} size="large" allowClear
+              notFoundContent={categoriesLoading ? <Spin size="small" /> : 'No categories found'}
+            />
+          </div>
+        </div>
+
+        {/* Note */}
+        <div>
+          <Label hint="(optional)">Note</Label>
+          <Input.TextArea
             value={form.note}
             onChange={onChange('note')}
             disabled={loading}
-            className={`${inputCls} min-h-24 resize-none`}
             placeholder="Optional note"
+            autoSize={{ minRows: 3 }}
+            style={{ resize: 'none' }}
           />
-        </Field>
+        </div>
 
-        {/* ── Actions ── */}
-        <div className="flex gap-3 pt-2">
+        {/* Actions */}
+        <div style={{ display: 'flex', gap: 12, paddingTop: 4 }}>
           <Button variant="secondary" size="md" fullWidth onClick={onCancel} disabled={loading}>
             Cancel
           </Button>
           <Button
-            variant="primary"
-            color="orange"
-            size="md"
-            fullWidth
-            icon={<Save size={16} />}
-            loading={loading}
-            onClick={onSubmit}
+            variant="primary" color="orange" size="md" fullWidth
+            icon={<Save size={16} />} loading={loading} onClick={onSubmit}
           >
             {editing ? 'Update Expense' : 'Save Expense'}
           </Button>
         </div>
-
       </div>
     </div>
   );
 };
 
-// ─── route wrapper ────────────────────────────────────────────────────────────
-
-import { useExpenses } from './useExpenses';
+// ── Route wrapper ─────────────────────────────────────────────────────────────
 
 const ExpenseFormRoute: React.FC = () => {
   const navigate = useNavigate();
-  const { id } = useParams<{ id: string }>();
-  const isEdit = !!id;
+  const { id }   = useParams<{ id: string }>();
+  const isEdit   = !!id;
 
   const {
     products, batches, saving, error, success, editing, form,
@@ -410,48 +590,84 @@ const ExpenseFormRoute: React.FC = () => {
     setBatchProductField, addBatchProduct, removeBatchProduct,
   } = useExpenses();
 
-  const [pageLoading, setPageLoading] = useState(isEdit);
-  const [loadError,   setLoadError]   = useState('');
+  const [pageLoading,  setPageLoading]  = useState(isEdit);
+  const [loadError,    setLoadError]    = useState('');
+  const [onWayExpenses, setOnWayExpenses] = useState<OnWayExpense[]>([]);
 
+  // ── On-the-way helpers ────────────────────────────────────────────────────
+  const addOnWay = () =>
+    setOnWayExpenses(prev => [
+      ...prev,
+      { tempId: crypto.randomUUID(), category: '', description: '', amount: '' },
+    ]);
+
+  const removeOnWay = (index: number) =>
+    setOnWayExpenses(prev => prev.filter((_, i) => i !== index));
+
+  const changeOnWay = (
+    index: number,
+    field: keyof Omit<OnWayExpense, 'tempId'>,
+    value: string,
+  ) =>
+    setOnWayExpenses(prev =>
+      prev.map((row, i) => i === index ? { ...row, [field]: value } : row)
+    );
+
+  // Reset on-the-way when switching to custom mode
+  useEffect(() => {
+    if (form.mode !== 'inventory_batch') setOnWayExpenses([]);
+  }, [form.mode]);
+
+  // Load expense and seed on-the-way costs from existing purchasingCosts
   useEffect(() => {
     if (!isEdit || !id) return;
-
     setPageLoading(true);
     getExpense(id)
-      .then((expense) => openEdit(expense))
+      .then((expense) => {
+        openEdit(expense);
+        // Seed on-the-way costs from whatever is already saved on this batch
+        const existing = (expense.batch as any)?.purchasingCosts ?? [];
+        if (existing.length > 0) {
+          setOnWayExpenses(
+            existing.map((c: any) => ({
+              tempId:      crypto.randomUUID(),
+              category:    c.category    ?? '',
+              description: c.description ?? '',
+              amount:      c.amount?.toString() ?? '',
+            }))
+          );
+        }
+      })
       .catch((err) => setLoadError(err instanceof Error ? err.message : 'Failed to load expense.'))
       .finally(() => setPageLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, isEdit]);
 
-  const handleCancel = () => {
-    closeForm();
-    navigate('/admin/expenses');
-  };
+  const handleCancel = () => { closeForm(); navigate('/admin/expenses'); };
 
   const handleSubmitAndRedirect = async () => {
-    const ok = await handleSubmit();
-    if (ok) {
-      navigate('/admin/expenses');
-    }
+    const validOnWay: AdditionalExpense[] = onWayExpenses
+      .filter(r => r.category && r.amount)
+      .map(r => ({
+        category:    r.category,
+        description: r.description || null,
+        amount:      parseFloat(r.amount),
+      }));
+
+    const ok = await handleSubmit(validOnWay);
+    if (ok) navigate('/admin/expenses');
   };
 
-  if (pageLoading) {
-    return (
-      <div className="py-10 text-center text-gray-400 text-sm">Loading expense...</div>
-    );
-  }
+  if (pageLoading) return (
+    <div style={{ padding: '40px 0', textAlign: 'center' }}><Spin size="large" /></div>
+  );
 
-  if (loadError) {
-    return (
-      <div className="space-y-4 max-w-3xl">
-        <ErrorBanner message={loadError} />
-        <Button variant="secondary" onClick={() => navigate('/admin/expenses')}>
-          Back to Expenses
-        </Button>
-      </div>
-    );
-  }
+  if (loadError) return (
+    <div style={{ maxWidth: 720, display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <ErrorBanner message={loadError} />
+      <Button variant="secondary" onClick={() => navigate('/admin/expenses')}>Back to Expenses</Button>
+    </div>
+  );
 
   return (
     <ExpenseFormPage
@@ -462,11 +678,15 @@ const ExpenseFormRoute: React.FC = () => {
       loading={saving}
       error={error}
       success={success}
+      onWayExpenses={onWayExpenses}
       onChange={setField}
       onModeChange={onModeChange}
       onBatchProductChange={setBatchProductField}
       onAddBatchProduct={addBatchProduct}
       onRemoveBatchProduct={removeBatchProduct}
+      onAddOnWay={addOnWay}
+      onRemoveOnWay={removeOnWay}
+      onOnWayChange={changeOnWay}
       onSubmit={handleSubmitAndRedirect}
       onCancel={handleCancel}
       onDismissError={() => setError('')}
