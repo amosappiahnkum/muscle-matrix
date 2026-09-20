@@ -1,5 +1,6 @@
 import React from 'react';
 import { Search } from 'lucide-react';
+import { Select } from 'antd';
 import { ExpenseMode } from './useExpenses';
 
 const inputCls = `w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg
@@ -8,17 +9,20 @@ const inputCls = `w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-l
   focus:ring-2 focus:ring-orange-100 transition-all`;
 
 interface ExpenseTableFiltersProps {
-  search:      string;
-  typeFilter:  'all' | ExpenseMode;
-  onSearch:    (value: string) => void;
+  search:       string;
+  typeFilter:   'all' | ExpenseMode;
+  onSearch:     (value: string) => void;
   onTypeFilter: (value: 'all' | ExpenseMode) => void;
 }
 
+const TYPE_OPTIONS = [
+  { value: 'all',             label: 'All Expenses' },
+  { value: 'custom',          label: 'Custom Only'  },
+  { value: 'inventory_batch', label: 'Batch Only'   },
+];
+
 const ExpenseTableFilters: React.FC<ExpenseTableFiltersProps> = ({
-  search,
-  typeFilter,
-  onSearch,
-  onTypeFilter,
+  search, typeFilter, onSearch, onTypeFilter,
 }) => (
   <div className="flex flex-col md:flex-row gap-3 mb-4">
     <div className="relative flex-1">
@@ -32,15 +36,12 @@ const ExpenseTableFilters: React.FC<ExpenseTableFiltersProps> = ({
       />
     </div>
 
-    <select
+    <Select
       value={typeFilter}
-      onChange={(e) => onTypeFilter(e.target.value as 'all' | ExpenseMode)}
-      className={`${inputCls} md:w-56`}
-    >
-      <option value="all">All expenses</option>
-      <option value="custom">Custom only</option>
-      <option value="inventory_batch">Batch only</option>
-    </select>
+      onChange={onTypeFilter}
+      options={TYPE_OPTIONS}
+      style={{ width: 180 }}
+    />
   </div>
 );
 

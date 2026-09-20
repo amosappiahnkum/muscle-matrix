@@ -2,10 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { getProducts, getLowStockProducts, getDailySalesReport } from '@/api/api';
 import { Product } from '@/types';
-import StatsCards    from './StatsCards';
-import LowStockAlert from './LowStockAlert';
-import SalesBarChart from './SalesBarChart';
-import { TabType }   from '../AdminDashboard';
+import StatsCards          from './StatsCards';
+import LowStockAlert       from './LowStockAlert';
+import SalesBarChart       from './SalesBarChart';
+import TopCustomersWidget  from './TopCustomersWidget';
+import { TabType }         from '../AdminDashboard';
 
 interface OverviewTabProps {
   onNavigate: (tab: TabType) => void;
@@ -93,9 +94,9 @@ const OverviewTab: React.FC<OverviewTabProps> = ({ onNavigate }) => {
 
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <SalesBarChart />
-
+        <SalesBarChart />
         <LowStockAlert products={lowStockProducts} />
+        <TopCustomersWidget />
       </div>
 
     </div>

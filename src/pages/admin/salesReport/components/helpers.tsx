@@ -1,20 +1,11 @@
-import { format, subDays } from 'date-fns';
+import type { Dayjs } from 'dayjs';
 import { Transaction } from '@/types';
-import { DateRange, ReportSummary } from '@/types';
+import { ReportSummary } from '@/types';
 
-export const getDateRangeLabel = (
-  dateRange: DateRange,
-  startDate: string,
-  endDate:   string,
-): string => {
-  switch (dateRange) {
-    case 'today':  return `Today — ${format(new Date(), 'MMMM dd, yyyy')}`;
-    case 'week':   return `Last 7 Days (${format(subDays(new Date(), 7), 'MMM dd')} – ${format(new Date(), 'MMM dd, yyyy')})`;
-    case 'month':  return `Last 30 Days (${format(subDays(new Date(), 30), 'MMM dd')} – ${format(new Date(), 'MMM dd, yyyy')})`;
-    case 'all':    return 'All Time Report';
-    case 'custom': return `${startDate} to ${endDate}`;
-    default:       return '';
-  }
+export const getDateRangeLabel = (dateValue: [Dayjs, Dayjs] | null): string => {
+  if (!dateValue) return 'All Time Report';
+  const [start, end] = dateValue;
+  return `${start.format('MMM DD, YYYY')} – ${end.format('MMM DD, YYYY')}`;
 };
 
 export const buildSummary = (transactions: Transaction[]): ReportSummary => {

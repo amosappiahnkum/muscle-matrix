@@ -1,27 +1,25 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { format, subDays, parseISO } from 'date-fns';
+import dayjs, { type Dayjs } from 'dayjs';
 import { Printer, BarChart2 } from 'lucide-react';
 import { Transaction } from '@/types';
 import { getTransactions } from '@/api/api.ts';
 import Button from '../../../components/common/Button.tsx';
 import { ErrorBanner } from '../../../components/common/Banner.tsx';
 
-import { DateRange, SaleType, ReportSummary, emptyReport } from '@/types';
-import { getDateRangeLabel, buildSummary }                  from './components/helpers.tsx';
-import { buildPrintHTML, triggerPrint }                     from './components/printBuilder.tsx';
-import { ReportFilters }                                     from './components/ReportFilters.tsx';
-import { SummaryCards }                                      from './components/SummaryCards.tsx';
-import { TransactionsTable }                                 from './components/TransactionsTable.tsx';
+import { SaleType, ReportSummary, emptyReport } from '@/types';
+import { getDateRangeLabel, buildSummary }       from './components/helpers.tsx';
+import { buildPrintHTML, triggerPrint }          from './components/printBuilder.tsx';
+import { ReportFilters }                         from './components/ReportFilters.tsx';
+import { SummaryCards }                          from './components/SummaryCards.tsx';
+import { TransactionsTable }                     from './components/TransactionsTable.tsx';
 
 const SalesReport: React.FC = () => {
-  const [dateRange,     setDateRange]     = useState<DateRange>('today');
-  const [startDate,     setStartDate]     = useState(format(new Date(), 'yyyy-MM-dd'));
-  const [endDate,       setEndDate]       = useState(format(new Date(), 'yyyy-MM-dd'));
-  const [filterType,    setFilterType]    = useState<SaleType>('all');
-  const [report,        setReport]        = useState<ReportSummary>(emptyReport);
-  const [transactions,  setTransactions]  = useState<Transaction[]>([]);
-  const [loading,       setLoading]       = useState(true);
-  const [error,         setError]         = useState('');
+  const [dateValue,    setDateValue]    = useState<[Dayjs, Dayjs] | null>([dayjs().startOf('day'), dayjs().endOf('day')]);
+  const [filterType,   setFilterType]   = useState<SaleType>('all');
+  const [report,       setReport]       = useState<ReportSummary>(emptyReport);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [loading,      setLoading]      = useState(true);
+  const [error,        setError]        = useState('');
 
   const loadReport = useCallback(async () => {
     setLoading(true);
@@ -29,14 +27,12 @@ const SalesReport: React.FC = () => {
     try {
       let all = await getTransactions();
 
-      // Date filter
-      const today = format(new Date(), 'yyyy-MM-dd');
-      if      (dateRange === 'today')  all = all.filter((t) => t.date === today);
-      else if (dateRange === 'week')   all = all.filter((t) => parseISO(t.date) >= subDays(new Date(), 7));
-      else if (dateRange === 'month')  all = all.filter((t) => parseISO(t.date) >= subDays(new Date(), 30));
-      else if (dateRange === 'custom') all = all.filter((t) => t.date >= startDate && t.date <= endDate);
+      if (dateValue) {
+        const startStr = dateValue[0].format('YYYY-MM-DD');
+        const endStr   = dateValue[1].format('YYYY-MM-DD');
+        all = all.filter((t) => t.date >= startStr && t.date <= endStr);
+      }
 
-      // Type filter
       if (filterType !== 'all') all = all.filter((t) => t.type === filterType);
 
       const sorted = all.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
@@ -47,7 +43,7 @@ const SalesReport: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [dateRange, startDate, endDate, filterType]);
+  }, [dateValue, filterType]);
 
   useEffect(() => { loadReport(); }, [loadReport]);
 
@@ -59,7 +55,7 @@ const SalesReport: React.FC = () => {
     triggerPrint(buildPrintHTML(
       transactions,
       report,
-      getDateRangeLabel(dateRange, startDate, endDate),
+      getDateRangeLabel(dateValue),
       typeLabel,
     ));
   };
@@ -93,19 +89,15 @@ const SalesReport: React.FC = () => {
       {error && <ErrorBanner message={error} onDismiss={() => setError('')} />}
 
       <ReportFilters
-        dateRange={dateRange}
-        startDate={startDate}
-        endDate={endDate}
+        dateValue={dateValue}
         filterType={filterType}
-        onDateRangeChange={setDateRange}
-        onStartDateChange={setStartDate}
-        onEndDateChange={setEndDate}
+        onDateChange={setDateValue}
         onFilterTypeChange={setFilterType}
       />
 
       <SummaryCards
         report={report}
-        rangeLabel={getDateRangeLabel(dateRange, startDate, endDate)}
+        rangeLabel={getDateRangeLabel(dateValue)}
         filterType={filterType}
       />
 

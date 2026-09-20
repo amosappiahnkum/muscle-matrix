@@ -274,6 +274,11 @@ export const deleteTransaction = (id: string): Promise<void> =>
 export const getDailySalesReport = (date: string): Promise<DailySalesReport> =>
   get<DailySalesReport>(`/reports/daily?date=${date}`);
 
+export interface TopCustomerRow { name: string; count: number; total: number; }
+
+export const getTopCustomers = (from: string, to: string, limit = 10): Promise<TopCustomerRow[]> =>
+  get<TopCustomerRow[]>(`/reports/top-customers?from=${from}&to=${to}&limit=${limit}`);
+
 export const getRangeReport = (from: string, to: string): Promise<DailySalesReport[]> =>
   get<DailySalesReport[]>(`/reports/range?from=${from}&to=${to}`);
 

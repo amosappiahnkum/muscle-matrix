@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ClipboardList, Minus, Plus, RotateCcw, Eye } from 'lucide-react';
-import { format, isToday, isThisWeek, parseISO } from 'date-fns';
+import { format, parseISO } from 'date-fns';
+import { type Dayjs } from 'dayjs';
 import { getProducts, getInventoryLog, adjustStock, getBatches } from '@/api/api.ts';
 import { Product, InventoryEntry } from '@/types';
 import DataTable, { Column } from '@/components/common/DataTable.tsx';
@@ -14,7 +15,7 @@ import { RemoveStockModal } from './components/RemoveStockModal';
 import DetailModal from './components/DetailModal';
 import {
   InventoryFilters,
-  FilterType, DateRange, ExpiryFilter,
+  FilterType, ExpiryFilter,
 } from './components/InventoryFilters';
 
 interface Batch {
@@ -44,11 +45,9 @@ const InventoryLog: React.FC = () => {
   const [loading,          setLoading]          = useState(true);
   const [search,           setSearch]           = useState('');
   const [typeFilter,       setTypeFilter]       = useState<FilterType>('all');
-  const [dateRange,        setDateRange]        = useState<DateRange>('all');
+  const [dateValue,        setDateValue]        = useState<[Dayjs, Dayjs] | null>(null);
   const [expiryFilter,     setExpiryFilter]     = useState<ExpiryFilter>('all');
   const [selectedBatchCode,setSelectedBatchCode]= useState<string>('all');
-  const [customFrom,       setCustomFrom]       = useState('');
-  const [customTo,         setCustomTo]         = useState('');
   const [selectedProduct,  setSelectedProduct]  = useState<Product | null>(null);
   const [viewingEntry,     setViewingEntry]     = useState<InventoryEntry | null>(null);
   const [removeOpen,       setRemoveOpen]       = useState(false);
@@ -118,12 +117,11 @@ const InventoryLog: React.FC = () => {
     if (typeFilter !== 'all' && e.type !== typeFilter)         return false;
     if (selectedBatchCode !== 'all' && e.batchCode !== selectedBatchCode) return false;
 
-    if (dateRange === 'today'  && !isToday(parseISO(e.createdAt)))    return false;
-    if (dateRange === 'week'   && !isThisWeek(parseISO(e.createdAt))) return false;
-    if (dateRange === 'custom') {
-      const d = parseISO(e.createdAt);
-      if (customFrom && d < parseISO(customFrom)) return false;
-      if (customTo   && d > parseISO(customTo))   return false;
+    if (dateValue) {
+      const dateStr = format(parseISO(e.createdAt), 'yyyy-MM-dd');
+      const startStr = dateValue[0].format('YYYY-MM-DD');
+      const endStr   = dateValue[1].format('YYYY-MM-DD');
+      if (dateStr < startStr || dateStr > endStr) return false;
     }
 
     if (expiryFilter !== 'all') {
@@ -293,17 +291,13 @@ const InventoryLog: React.FC = () => {
         <InventoryFilters
           search={search}
           typeFilter={typeFilter}
-          dateRange={dateRange}
+          dateValue={dateValue}
           expiryFilter={expiryFilter}
-          customFrom={customFrom}
-          customTo={customTo}
           filteredCount={filtered.length}
           onSearchChange={setSearch}
           onTypeFilterChange={setTypeFilter}
-          onDateRangeChange={setDateRange}
+          onDateChange={setDateValue}
           onExpiryFilterChange={setExpiryFilter}
-          onCustomFromChange={setCustomFrom}
-          onCustomToChange={setCustomTo}
         />
 
         <div className="flex items-center gap-2 bg-white p-3 rounded-xl border border-gray-200 shadow-sm max-w-xs">
